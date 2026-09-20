@@ -8,6 +8,9 @@ package dev.noahpn.elbaite.chip8;
  * holds one byte, the index register holds sixteen bits, and the program counter holds a
  * twelve-bit address. Nothing about {@code int} enforces any of that.
  *
+ * <p>A new instance has every general register zeroed, the index register at
+ * {@code 0x0000}, and the program counter at {@link Memory#PROGRAM_START}.
+ *
  * <p>Like {@link Memory}, this class rejects an out-of-range value rather than
  * truncating or wrapping it. Nothing here executes instructions; it only holds state.
  */
