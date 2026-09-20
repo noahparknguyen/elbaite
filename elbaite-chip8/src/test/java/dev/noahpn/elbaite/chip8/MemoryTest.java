@@ -11,7 +11,7 @@ class MemoryTest {
     private Memory memory;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
         memory = new Memory();
     }
 
