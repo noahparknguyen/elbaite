@@ -1,23 +1,20 @@
 package dev.noahpn.elbaite.chip8;
 
-import java.io.IOException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-
-
 /**
- * The CHIP-8 CPU's state between instructions: sixteen general registers, the index
- * register, and the program counter.
+ * The CHIP-8 processor: its registers, and the fetch-decode-execute cycle that runs
+ * instructions against them.
  *
- * <p>The three are different widths and each is guarded separately. A general register
+ * <p>It holds sixteen general registers, the index register, and the program counter.
+ * The three are different widths and each is guarded separately. A general register
  * holds one byte, the index register holds sixteen bits, and the program counter holds a
  * twelve-bit address. Nothing about {@code int} enforces any of that.
  *
  * <p>A new instance has every general register zeroed, the index register at
  * {@code 0x0000}, and the program counter at {@link Memory#PROGRAM_START}.
  *
- * <p>Like {@link Memory}, this class rejects an out-of-range value rather than
- * truncating or wrapping it. Nothing here executes instructions; it only holds state.
+ * <p>Like {@link Memory}, the public setters reject an out-of-range value rather than
+ * truncating or wrapping it. Instructions follow the hardware instead: {@code 7XNN} wraps
+ * its sum at eight bits, because that is what the original machine did.
  */
 public final class Cpu {
 
@@ -210,37 +207,71 @@ public final class Cpu {
         return new Opcode((high << 8) | low);
     }
 
-    static void main(String[] args) {
-        if (args.length == 0) {
-            IO.println("Usage: Cpu <rom-path>");
-            return;
+    /**
+     * Runs one decoded instruction.
+     *
+     * <p>Dispatches on the first nibble of the opcode, which selects the instruction
+     * family, and hands off to the matching handler. It currently handles {@code 1NNN},
+     * {@code 6XNN}, and {@code 7XNN}. Every other opcode throws, including ones that
+     * are legal CHIP-8 but not yet implemented here — this is not a validation
+     * failure, it is a "not yet" signal.
+     *
+     * @param opcode the instruction to run
+     * @throws UnsupportedOperationException if the opcode's family has no handler yet
+     */
+    public void execute(Opcode opcode) {
+        switch (opcode.high()) {
+            case 0x1 -> op1NNN(opcode);
+            case 0x6 -> op6XNN(opcode);
+            case 0x7 -> op7XNN(opcode);
+            default -> throw new UnsupportedOperationException(
+                String.format("CHIP-8 opcode not implemented: 0x%04X", opcode.value()));
         }
+    }
 
+    /**
+     * Runs one full fetch-decode-execute cycle: fetches the instruction at the
+     * program counter, executes it, and returns the opcode that ran.
+     *
+     * <p>Fetching advances the program counter by two, so by the time the
+     * instruction executes, the counter already points at the next instruction
+     * in sequence. A jump overwrites it from there.
+     *
+     * @return the opcode that was fetched and executed
+     * @throws IndexOutOfBoundsException     if the program counter is too close to
+     *                                       the top of the address space to fetch
+     * @throws UnsupportedOperationException if the opcode has no handler yet
+     */
+    public Opcode step() {
+        Opcode opcode = fetch();
+        execute(opcode);
+        return opcode;
+    }
+
+    private void op1NNN(Opcode opcode) {
+        setProgramCounter(opcode.nnn());
+    }
+
+    private void op6XNN(Opcode opcode) {
+        writeRegister(opcode.x(), opcode.nn());
+    }
+
+    private void op7XNN(Opcode opcode) {
+        writeRegister(opcode.x(), (readRegister(opcode.x()) + opcode.nn()) & 0xFF);
+    }
+
+    static void main() {
         Memory memory = new Memory();
-        try {
-            memory.loadRom(Path.of(args[0]));
-        } catch (NoSuchFileException e) {
-            IO.println("ROM not found: " + args[0]);
-            return;
-        } catch (IOException e) {
-            IO.println("Could not read ROM '" + args[0] + "': " + e.getMessage());
-            return;
-        }
-
+        memory.loadRom(new byte[]{0x60, (byte) 0xFD, 0x70, 0x01, 0x12, 0x02});
         Cpu cpu = new Cpu(memory);
 
-        String header = "addr  op     hi  X   Y   N   NN   NNN";
-        String row = "%04X  %04X   %X   %X   %X   %X   %02X   %03X";
-
-        IO.println(header);
-        for (int i = 0; i < 12; i++) {
+        IO.println("addr  op    V0");
+        for (int i = 1; i <= 8; i++) {
             int addr = cpu.getProgramCounter();
-            Opcode op = cpu.fetch();
-
-            IO.println(String.format(row,
-                addr, op.value(), op.high(), op.x(), op.y(), op.n(), op.nn(), op.nnn()));
+            Opcode opcode = cpu.step();
+            IO.println(String.format("%04X  %04X  %02X",
+                addr, opcode.value(), cpu.readRegister(0x0)));
         }
-
         IO.println();
         cpu.dump();
     }

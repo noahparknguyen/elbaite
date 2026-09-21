@@ -118,4 +118,62 @@ class CpuTest {
 
         assertEquals(0x202, cpu.getProgramCounter());
     }
+
+    // --- Execute ---
+
+    // 1NNN
+    @Test
+    void jumpSetsProgramCounter() {
+        cpu.execute(new Opcode(0x1ABC));
+
+        assertEquals(0xABC, cpu.getProgramCounter());
+    }
+
+    // 6XNN
+    @Test
+    void setRegisterStoresValue() {
+        cpu.execute(new Opcode(0x6A42));
+
+        assertEquals(0x42, cpu.readRegister(0xA));
+    }
+
+    // 7XNN
+    @Test
+    void addToRegisterWrapsAtEightBits() {
+        cpu.writeRegister(0x3, 0xFF);
+
+        cpu.execute(new Opcode(0x7301));
+
+        assertEquals(0x00, cpu.readRegister(0x3));
+    }
+
+    @Test
+    void addToRegisterLeavesFlagAlone() {
+        cpu.writeRegister(0xF, 0x42);
+        cpu.writeRegister(0x4, 0xFF);
+
+        cpu.execute(new Opcode(0x7401));
+
+        assertEquals(0x42, cpu.readRegister(0xF));
+    }
+
+    // No handler
+    @Test
+    void unimplementedOpcodeThrows() {
+        assertThrows(UnsupportedOperationException.class,
+            () -> cpu.execute(new Opcode(0x00E0)));
+    }
+
+    // --- Step ---
+
+    @Test
+    void stepFetchesThenExecutes() {
+        memory.loadRom(new byte[]{0x60, 0x2A});
+
+        Opcode returned = cpu.step();
+
+        assertEquals(0x2A, cpu.readRegister(0x0));
+        assertEquals(0x202, cpu.getProgramCounter());
+        assertEquals(0x602A, returned.value());
+    }
 }
