@@ -1,5 +1,10 @@
 package dev.noahpn.elbaite.chip8;
 
+import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+
+
 /**
  * The CHIP-8 CPU's state between instructions: sixteen general registers, the index
  * register, and the program counter.
@@ -25,6 +30,17 @@ public final class Cpu {
     private final int[] registers = new int[REGISTER_COUNT];
     private int index;
     private int programCounter = Memory.PROGRAM_START;
+
+    private final Memory memory;
+
+    /**
+     * Creates a CPU that reads instructions and data from the given memory.
+     *
+     * @param memory the memory this CPU fetches from, not {@code null}
+     */
+    public Cpu(Memory memory) {
+        this.memory = memory;
+    }
 
     /**
      * Returns the value held in one of the sixteen general registers.
@@ -90,7 +106,7 @@ public final class Cpu {
     public void setIndexRegister(int value) {
         if (value < 0 || value > INDEX_MAX) {
             throw new IllegalArgumentException(
-                "Index register value out of range: " + value + " (valid: 0x0000-0xFFFF)");
+                "CHIP-8 index register out of range: " + value + " (valid: 0x0000-0xFFFF)");
         }
 
         index = value;
@@ -133,7 +149,7 @@ public final class Cpu {
     public void advanceProgramCounter() {
         if (programCounter > ADDRESS_MAX - 2) {
             throw new IndexOutOfBoundsException(
-                "Program counter cannot advance past 0xFFF from " + programCounter);
+                "CHIP-8 program counter cannot advance past 0xFFF from " + programCounter);
         }
 
         programCounter += 2;
@@ -173,18 +189,59 @@ public final class Cpu {
         }
     }
 
-    static void main() {
-        Cpu cpu = new Cpu();
-        cpu.dump();
+    /**
+     * Reads the two bytes at the program counter as one instruction, high byte first, and
+     * advances the program counter by two before returning.
+     *
+     * <p>Advancing is part of fetching, not something a caller does afterwards. It happens
+     * before the instruction runs so that a jump, which writes the program counter itself,
+     * lands where it means to instead of being undone by a later increment. Callers must not
+     * also advance, or every instruction will skip the next one.
+     *
+     * @return the instruction at the old program counter
+     * @throws IndexOutOfBoundsException if the program counter is at {@code 0xFFE} or
+     *                                   {@code 0xFFF}, where the second byte or the advance
+     *                                   would leave the address space
+     */
+    public Opcode fetch() {
+        int high = memory.read(programCounter);
+        int low = memory.read(programCounter + 1);
+        advanceProgramCounter();
+        return new Opcode((high << 8) | low);
+    }
+
+    static void main(String[] args) {
+        if (args.length == 0) {
+            IO.println("Usage: Cpu <rom-path>");
+            return;
+        }
+
+        Memory memory = new Memory();
+        try {
+            memory.loadRom(Path.of(args[0]));
+        } catch (NoSuchFileException e) {
+            IO.println("ROM not found: " + args[0]);
+            return;
+        } catch (IOException e) {
+            IO.println("Could not read ROM '" + args[0] + "': " + e.getMessage());
+            return;
+        }
+
+        Cpu cpu = new Cpu(memory);
+
+        String header = "addr  op     hi  X   Y   N   NN   NNN";
+        String row = "%04X  %04X   %X   %X   %X   %X   %02X   %03X";
+
+        IO.println(header);
+        for (int i = 0; i < 12; i++) {
+            int addr = cpu.getProgramCounter();
+            Opcode op = cpu.fetch();
+
+            IO.println(String.format(row,
+                addr, op.value(), op.high(), op.x(), op.y(), op.n(), op.nn(), op.nnn()));
+        }
+
         IO.println();
-
-        cpu.writeRegister(0x0, 0x0C);
-        cpu.writeRegister(0x1, 0x08);
-        cpu.writeRegister(0xF, 0x01);
-        cpu.setIndexRegister(0x22A);
-        cpu.advanceProgramCounter();
-        cpu.advanceProgramCounter();
-
         cpu.dump();
     }
 }

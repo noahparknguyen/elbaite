@@ -8,11 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CpuTest {
 
+    private Memory memory;
     private Cpu cpu;
 
     @BeforeEach
     void setUp() {
-        cpu = new Cpu();
+        memory = new Memory();
+        cpu = new Cpu(memory);
     }
 
     // --- General registers ---
@@ -96,5 +98,24 @@ class CpuTest {
         // 0xFFD is the last address it can advance from, so 0xFFE is the first failure.
         cpu.setProgramCounter(0xFFE);
         assertThrows(IndexOutOfBoundsException.class, cpu::advanceProgramCounter);
+    }
+
+    // --- Fetch ---
+
+    @Test
+    void fetchCombinesBytesBigEndian() {
+        memory.write(0x200, 0xA2);
+        memory.write(0x201, 0x2A);
+
+        Opcode opcode = cpu.fetch();
+
+        assertEquals(0xA22A, opcode.value());
+    }
+
+    @Test
+    void fetchAdvancesProgramCounter() {
+        cpu.fetch();
+
+        assertEquals(0x202, cpu.getProgramCounter());
     }
 }
