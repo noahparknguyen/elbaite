@@ -65,6 +65,25 @@ public final class Display {
     }
 
     /**
+     * Inverts one pixel and reports what it was before the flip.
+     *
+     * <p>A dark pixel becomes lit and this returns {@code false}; a lit pixel becomes
+     * dark and this returns {@code true}. It is the <em>previous</em> state, not the
+     * new one, because that is what {@code DXYN} needs: a pixel that was lit and just
+     * got switched off means two sprites overlapped, which is a collision.
+     *
+     * @param x the column, {@code 0} to {@code 63}
+     * @param y the row, {@code 0} to {@code 31}
+     * @return whether the pixel was lit before the flip
+     * @throws IndexOutOfBoundsException if {@code x} or {@code y} is outside the display
+     */
+    public boolean flipPixel(int x, int y) {
+        boolean pixel = getPixel(x, y);
+        setPixel(x, y, !pixel);
+        return pixel;
+    }
+
+    /**
      * Turns every pixel off.
      *
      * <p>This is what {@code 00E0} does.
@@ -75,19 +94,21 @@ public final class Display {
 
     /**
      * Prints the whole screen to standard output: {@link #HEIGHT} lines of
-     * {@link #WIDTH} characters, {@code #} for a lit pixel and {@code .} for a dark one.
+     * {@link #WIDTH} characters, a filled block for a lit pixel and a space for a dark
+     * one.
      *
-     * <p>The characters are the same as {@link Font}'s, so the screen and the font
-     * viewer read the same way.
+     * <p>The same two characters {@link Font} uses, so the screen and the font viewer
+     * read the same way. A blank background rather than a dotted one reads as a picture,
+     * at the cost of showing where the screen ends.
      */
     public void dump() {
         for (int y = 0; y < HEIGHT; y++) {
             StringBuilder sb = new StringBuilder();
             for (int x = 0; x < WIDTH; x++) {
                 if (getPixel(x, y)) {
-                    sb.append('#');
+                    sb.append('█');
                 } else {
-                    sb.append('.');
+                    sb.append(' ');
                 }
             }
             IO.println(sb.toString());

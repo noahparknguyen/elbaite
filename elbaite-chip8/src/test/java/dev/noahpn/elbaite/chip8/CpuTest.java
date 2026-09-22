@@ -172,15 +172,113 @@ class CpuTest {
         assertEquals(0x42, cpu.readRegister(0xF));
     }
 
+    // ANNN
+    @Test
+    void setIndexStoresAddress() {
+        cpu.execute(new Opcode(0xA123));
+
+        assertEquals(0x123, cpu.getIndexRegister());
+    }
+
+    // DXYN
+    @Test
+    void drawSpriteXorsOntoDisplay() {
+        // 0xA0 = 1010 0000. The two set bits sit at opposite ends of the byte, so
+        // a wrong shift direction or a wrong origin moves them visibly.
+        memory.write(0x300, 0xA0);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0);
+
+        cpu.execute(new Opcode(0xD011));
+
+        assertTrue(display.getPixel(0, 0));
+        assertFalse(display.getPixel(1, 0));
+        assertTrue(display.getPixel(2, 0));
+    }
+
+    @Test
+    void drawSpriteSetsFlagOnCollision() {
+        // Drawing the same sprite twice restores the screen, so the second pass
+        // flips every lit pixel back off. That is what a collision is.
+        memory.write(0x300, 0xFF);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0);
+
+        cpu.execute(new Opcode(0xD011));
+        cpu.execute(new Opcode(0xD011));
+
+        assertEquals(1, cpu.readRegister(0xF));
+        assertFalse(display.getPixel(0, 0));
+    }
+
+    @Test
+    void drawSpriteClearsFlagWithoutCollision() {
+        // A sentinel in VF catches a missing write at the end of DXYN: without
+        // it, VF would stay at the sentinel rather than becoming 0.
+        memory.write(0x300, 0x80);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0);
+
+        cpu.execute(new Opcode(0xD011));
+
+        assertEquals(0, cpu.readRegister(0xF));
+        assertTrue(display.getPixel(0, 0));
+    }
+
+    @Test
+    void drawSpriteWrapsStartPosition() {
+        // 65 and 33 are the smallest values past each edge, so the modulo has to
+        // be applied to the start coordinate and not to every pixel.
+        memory.write(0x300, 0x80);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0x0, 65);
+        cpu.writeRegister(0x1, 33);
+
+        cpu.execute(new Opcode(0xD011));
+
+        assertTrue(display.getPixel(1, 1));
+        assertFalse(display.getPixel(1, 0));
+        assertFalse(display.getPixel(0, 1));
+    }
+
+    @Test
+    void drawSpriteClipsAtEdges() {
+        // Three rows from row 30, so the third lands on row 32. Eight columns from
+        // column 60, so the last four land on columns 64-67. A wrap would put them
+        // back at the far edge; a clip leaves them off. The loops check both.
+        memory.write(0x300, 0xFF);
+        memory.write(0x301, 0xFF);
+        memory.write(0x302, 0xFF);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0x0, 60);
+        cpu.writeRegister(0x1, 30);
+
+        cpu.execute(new Opcode(0xD013));
+
+        for (int x = 60; x <= 63; x++) {
+            assertTrue(display.getPixel(x, 30), "row 30, column " + x);
+            assertTrue(display.getPixel(x, 31), "row 31, column " + x);
+        }
+        for (int x = 0; x <= 3; x++) {
+            assertFalse(display.getPixel(x, 30), "column " + x + " is where a wrap would land");
+            assertFalse(display.getPixel(x, 31), "column " + x + " is where a wrap would land");
+        }
+        for (int x = 0; x < 64; x++) {
+            assertFalse(display.getPixel(x, 0), "row 0 is where a wrap would land");
+        }
+    }
+
     // No handler
     @Test
     void unimplementedOpcodeThrows() {
         // 00EE reaches dispatch0's default
-        assertThrows(UnsupportedOperationException.class,
-            () -> cpu.execute(new Opcode(0x00EE)));
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EE)));
         // 8000 reaches execute's default
-        assertThrows(UnsupportedOperationException.class,
-            () -> cpu.execute(new Opcode(0x8000)));
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x8000)));
     }
 
     // --- Step ---

@@ -1,5 +1,9 @@
 package dev.noahpn.elbaite.chip8;
 
+import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+
 /**
  * The CHIP-8 processor: its registers, and the fetch-decode-execute cycle that runs
  * instructions.
@@ -216,9 +220,9 @@ public final class Cpu {
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 1NNN}, {@code 6XNN}, and {@code 7XNN}. Every other opcode throws,
-     * including ones that are legal CHIP-8 but not yet implemented here — this is not a
-     * validation failure, it is a "not yet" signal.
+     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, {@code ANNN}, and {@code DXYN}. Every
+     * other opcode throws, including ones that are legal CHIP-8 but not yet implemented
+     * here — this is not a validation failure, it is a "not yet" signal.
      *
      * @param opcode the instruction to run
      * @throws UnsupportedOperationException if the opcode has no handler yet
@@ -229,6 +233,8 @@ public final class Cpu {
             case 0x1 -> op1NNN(opcode);
             case 0x6 -> op6XNN(opcode);
             case 0x7 -> op7XNN(opcode);
+            case 0xA -> opANNN(opcode);
+            case 0xD -> opDXYN(opcode);
             default -> throw notImplemented(opcode);
         }
     }
@@ -282,20 +288,69 @@ public final class Cpu {
         writeRegister(opcode.x(), (readRegister(opcode.x()) + opcode.nn()) & 0xFF);
     }
 
-    static void main() {
+    private void opANNN(Opcode opcode) {
+        setIndexRegister(opcode.nnn());
+    }
+
+    private void opDXYN(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        int startX = vx % 64;
+        int startY = vy % 32;
+
+        int i = getIndexRegister();
+        boolean collision = false;
+        for (int row = 0; row < opcode.n(); row++) {
+            int spriteByte = memory.read(i + row);
+
+            for (int col = 0; col < 8; col++) {
+                // col 0 is the leftmost bit: 0x80, then 0x40, 0x20, ...
+                if ((spriteByte & (0x80 >> col)) == 0) {
+                    continue;
+                }
+
+                int px = startX + col;
+                int py = startY + row;
+
+                // Clip, do not wrap.
+                if (px >= 64 || py >= 32) {
+                    continue;
+                }
+
+                if (display.flipPixel(px, py)) {
+                    collision = true;
+                }
+            }
+        }
+
+        writeRegister(0xF, collision ? 1 : 0);
+    }
+
+    static void main(String[] args) {
+        if (args.length != 1) {
+            IO.println("Usage: Cpu <rom-file>");
+            return;
+        }
+
         Memory memory = new Memory();
+        try {
+            memory.loadRom(Path.of(args[0]));
+        } catch (NoSuchFileException e) {
+            IO.println("ROM not found: " + args[0]);
+            return;
+        } catch (IOException e) {
+            IO.println("Could not read ROM '" + args[0] + "': " + e.getMessage());
+            return;
+        }
+
         Display display = new Display();
-        memory.loadRom(new byte[]{0x60, (byte) 0xFD, 0x70, 0x01, 0x12, 0x02});
         Cpu cpu = new Cpu(memory, display);
 
-        IO.println("addr  op    V0");
-        for (int i = 1; i <= 8; i++) {
-            int addr = cpu.getProgramCounter();
-            Opcode opcode = cpu.step();
-            IO.println(String.format("%04X  %04X  %02X",
-                addr, opcode.value(), cpu.readRegister(0x0)));
+        for (int i = 0; i < 100; i++) {
+            cpu.step();
         }
-        IO.println();
-        cpu.dump();
+
+        display.dump();
     }
 }

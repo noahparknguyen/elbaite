@@ -34,6 +34,16 @@ class DisplayTest {
     }
 
     @Test
+    void flipPixelReturnsPreviousState() {
+        display.setPixel(0, 0, true);
+        assertTrue(display.getPixel(0, 0));
+
+        boolean previous = display.flipPixel(0, 0);
+        assertTrue(previous);
+        assertFalse(display.getPixel(0, 0));
+    }
+
+    @Test
     void outOfRangePixelThrows() {
         assertThrows(IndexOutOfBoundsException.class, () -> display.getPixel(-1, 0));
         assertThrows(IndexOutOfBoundsException.class, () -> display.getPixel(64, 0));
