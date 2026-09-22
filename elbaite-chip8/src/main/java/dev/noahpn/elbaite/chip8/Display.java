@@ -1,0 +1,108 @@
+package dev.noahpn.elbaite.chip8;
+
+import java.util.Arrays;
+
+/**
+ * The CHIP-8 screen: a 64 by 32 grid of pixels, each either lit or dark.
+ *
+ * <p>A new display has every pixel dark.
+ *
+ * <p>Coordinates run from the top-left corner. {@code x} goes {@code 0} to {@code 63}
+ * left to right, {@code y} goes {@code 0} to {@code 31} top to bottom. The pixel at
+ * {@code (x, y)} is stored at {@code y * WIDTH + x} in a flat array — row after row,
+ * left to right, the way text is laid out on a page.
+ *
+ * <p>Pixels are {@code boolean}, not {@code int}. A pixel has exactly two states and a
+ * {@code boolean} has exactly two values, so an invalid pixel cannot be stored.
+ * That is why nothing here range-checks a pixel value the way {@link Cpu} checks a
+ * register.
+ *
+ * <p>The screen is its own class rather than a region of {@link Memory}. On the original
+ * machine it sat inside RAM, but no CHIP-8 program reads it directly — only {@code 00E0}
+ * and the draw instruction touch it.
+ */
+public final class Display {
+
+    public static final int WIDTH = 64;
+
+    public static final int HEIGHT = 32;
+
+    private final boolean[] pixelBuffer = new boolean[WIDTH * HEIGHT];
+
+    /**
+     * Returns whether one pixel is lit.
+     *
+     * @param x the column, {@code 0} to {@code 63}
+     * @param y the row, {@code 0} to {@code 31}
+     * @return {@code true} if the pixel is lit, {@code false} if it is dark
+     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63}
+     *                                   or {@code y} is outside {@code 0} to {@code 31}
+     */
+    public boolean getPixel(int x, int y) {
+        checkPixel(x, y);
+        return pixelBuffer[y * WIDTH + x];
+    }
+
+    /**
+     * Turns one pixel on or off.
+     *
+     * @param x  the column, {@code 0} to {@code 63}
+     * @param y  the row, {@code 0} to {@code 31}
+     * @param on {@code true} to light the pixel, {@code false} to darken it
+     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63}
+     *                                   or {@code y} is outside {@code 0} to {@code 31}
+     */
+    public void setPixel(int x, int y, boolean on) {
+        checkPixel(x, y);
+        pixelBuffer[y * WIDTH + x] = on;
+    }
+
+    private void checkPixel(int x, int y) {
+        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+            throw new IndexOutOfBoundsException(
+                "CHIP-8 pixel out of range: " + x + ", " + y + " (valid: 0-63, 0-31)");
+        }
+    }
+
+    /**
+     * Turns every pixel off.
+     *
+     * <p>This is what {@code 00E0} does.
+     */
+    public void clear() {
+        Arrays.fill(pixelBuffer, false);
+    }
+
+    /**
+     * Prints the whole screen to standard output: {@link #HEIGHT} lines of
+     * {@link #WIDTH} characters, {@code #} for a lit pixel and {@code .} for a dark one.
+     *
+     * <p>The characters are the same as {@link Font}'s, so the screen and the font
+     * viewer read the same way.
+     */
+    public void dump() {
+        for (int y = 0; y < HEIGHT; y++) {
+            StringBuilder sb = new StringBuilder();
+            for (int x = 0; x < WIDTH; x++) {
+                if (getPixel(x, y)) {
+                    sb.append('#');
+                } else {
+                    sb.append('.');
+                }
+            }
+            IO.println(sb.toString());
+        }
+    }
+
+    static void main() {
+        Display display = new Display();
+        for (int y = 0; y < HEIGHT; y++) {
+            for (int x = 0; x < WIDTH; x++) {
+                if (x == 0 || x == WIDTH - 1 || y == 0 || y == HEIGHT - 1) {
+                    display.setPixel(x, y, true);
+                }
+            }
+        }
+        display.dump();
+    }
+}

@@ -2,7 +2,7 @@ package dev.noahpn.elbaite.chip8;
 
 /**
  * The CHIP-8 processor: its registers, and the fetch-decode-execute cycle that runs
- * instructions against them.
+ * instructions.
  *
  * <p>It holds sixteen general registers, the index register, and the program counter.
  * The three are different widths and each is guarded separately. A general register
@@ -29,14 +29,18 @@ public final class Cpu {
     private int programCounter = Memory.PROGRAM_START;
 
     private final Memory memory;
+    private final Display display;
 
     /**
-     * Creates a CPU that reads instructions and data from the given memory.
+     * Creates a CPU that reads instructions and data from the given memory and draws to
+     * the given display.
      *
-     * @param memory the memory this CPU fetches from, not {@code null}
+     * @param memory  the memory this CPU fetches from, not {@code null}
+     * @param display the display this CPU draws to, not {@code null}
      */
-    public Cpu(Memory memory) {
+    public Cpu(Memory memory, Display display) {
         this.memory = memory;
+        this.display = display;
     }
 
     /**
@@ -211,21 +215,21 @@ public final class Cpu {
      * Runs one decoded instruction.
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
-     * family, and hands off to the matching handler. It currently handles {@code 1NNN},
-     * {@code 6XNN}, and {@code 7XNN}. Every other opcode throws, including ones that
-     * are legal CHIP-8 but not yet implemented here — this is not a validation
-     * failure, it is a "not yet" signal.
+     * family, and hands off to the matching handler. It currently handles {@code 00E0},
+     * {@code 1NNN}, {@code 6XNN}, and {@code 7XNN}. Every other opcode throws,
+     * including ones that are legal CHIP-8 but not yet implemented here — this is not a
+     * validation failure, it is a "not yet" signal.
      *
      * @param opcode the instruction to run
-     * @throws UnsupportedOperationException if the opcode's family has no handler yet
+     * @throws UnsupportedOperationException if the opcode has no handler yet
      */
     public void execute(Opcode opcode) {
         switch (opcode.high()) {
+            case 0x0 -> dispatch0(opcode);
             case 0x1 -> op1NNN(opcode);
             case 0x6 -> op6XNN(opcode);
             case 0x7 -> op7XNN(opcode);
-            default -> throw new UnsupportedOperationException(
-                String.format("CHIP-8 opcode not implemented: 0x%04X", opcode.value()));
+            default -> throw notImplemented(opcode);
         }
     }
 
@@ -248,6 +252,24 @@ public final class Cpu {
         return opcode;
     }
 
+    // The whole 0 family shares its first nibble, so execute cannot tell 00E0 from 00EE.
+    // This switches on the full value instead.
+    private void dispatch0(Opcode opcode) {
+        switch (opcode.value()) {
+            case 0x00E0 -> op00E0();
+            default -> throw notImplemented(opcode);
+        }
+    }
+
+    private UnsupportedOperationException notImplemented(Opcode opcode) {
+        return new UnsupportedOperationException(
+            String.format("CHIP-8 opcode not implemented: 0x%04X", opcode.value()));
+    }
+
+    private void op00E0() {
+        display.clear();
+    }
+
     private void op1NNN(Opcode opcode) {
         setProgramCounter(opcode.nnn());
     }
@@ -262,8 +284,9 @@ public final class Cpu {
 
     static void main() {
         Memory memory = new Memory();
+        Display display = new Display();
         memory.loadRom(new byte[]{0x60, (byte) 0xFD, 0x70, 0x01, 0x12, 0x02});
-        Cpu cpu = new Cpu(memory);
+        Cpu cpu = new Cpu(memory, display);
 
         IO.println("addr  op    V0");
         for (int i = 1; i <= 8; i++) {

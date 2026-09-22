@@ -3,18 +3,19 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class CpuTest {
 
     private Memory memory;
+    private Display display;
     private Cpu cpu;
 
     @BeforeEach
     void setUp() {
         memory = new Memory();
-        cpu = new Cpu(memory);
+        display = new Display();
+        cpu = new Cpu(memory, display);
     }
 
     // --- General registers ---
@@ -121,6 +122,20 @@ class CpuTest {
 
     // --- Execute ---
 
+    // 00E0
+    @Test
+    void clearScreenBlanksDisplay() {
+        display.setPixel(0, 0, true);
+        display.setPixel(1, 0, true);
+        display.setPixel(0, 1, true);
+
+        cpu.execute(new Opcode(0x00E0));
+
+        assertFalse(display.getPixel(0, 0));
+        assertFalse(display.getPixel(1, 0));
+        assertFalse(display.getPixel(0, 1));
+    }
+
     // 1NNN
     @Test
     void jumpSetsProgramCounter() {
@@ -160,8 +175,12 @@ class CpuTest {
     // No handler
     @Test
     void unimplementedOpcodeThrows() {
+        // 00EE reaches dispatch0's default
         assertThrows(UnsupportedOperationException.class,
-            () -> cpu.execute(new Opcode(0x00E0)));
+            () -> cpu.execute(new Opcode(0x00EE)));
+        // 8000 reaches execute's default
+        assertThrows(UnsupportedOperationException.class,
+            () -> cpu.execute(new Opcode(0x8000)));
     }
 
     // --- Step ---
