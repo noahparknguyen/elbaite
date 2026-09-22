@@ -38,7 +38,7 @@ public final class Font {
         0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
         0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
         0x60, 0x90, 0xF0, 0x90, 0x90, // A
-        0xF0, 0x90, 0xE0, 0x90, 0xF0, // B
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
         0x70, 0x80, 0x80, 0x80, 0x70, // C
         0xE0, 0x90, 0x90, 0x90, 0xE0, // D
         0xF0, 0x80, 0xE0, 0x80, 0xF0, // E
@@ -49,7 +49,8 @@ public final class Font {
     }
 
     /**
-     * Renders one row of a sprite as a string of {@code #} and {@code .} characters.
+     * Renders one row of a sprite as a string of blocks and spaces, one character per
+     * pixel: a filled block for a set bit, a space for a clear one.
      *
      * <p>Character {@code 0} of the result is bit 7 of {@code spriteByte}, character
      * {@code 1} is bit 6, and so on, so the most significant bit is the leftmost pixel.
@@ -65,9 +66,9 @@ public final class Font {
         for (int i = 7; i >= 0; i--) {
             int bit = (spriteByte >> i) & 1;
             if (bit != 0) {
-                sb.append("#");
+                sb.append("█");
             } else {
-                sb.append(".");
+                sb.append(" ");
             }
         }
         return sb.substring(0, width);

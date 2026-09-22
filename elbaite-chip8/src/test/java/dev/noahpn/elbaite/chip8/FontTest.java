@@ -9,8 +9,8 @@ class FontTest {
 
     @Test
     void renderRowReadsMostSignificantBitFirst() {
-        assertEquals("#.#..#.#", Font.renderRow(0xA5, 8));
-        assertEquals("####", Font.renderRow(0xF0, 4));
+        assertEquals("█ █  █ █", Font.renderRow(0xA5, 8));
+        assertEquals("████", Font.renderRow(0xF0, 4));
     }
 
     @Test
