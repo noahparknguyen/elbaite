@@ -11,9 +11,9 @@ indent_style = space
 indent_size = 4
 max_line_length = 120
 # Pinned rather than left to the IDE scheme: hand-wrapped throws kept collapsing onto one
-# line, and wrap_long_lines makes anything over the margin re-wrap on the next format.
+# line. wrap_long_lines was tried alongside this and removed -- it "fixes" an over-long
+# line by splitting string literals into concatenations, which is worse than the problem.
 ij_java_keep_line_breaks = true
-ij_java_wrap_long_lines = true
 
 [*.xml]
 indent_style = space

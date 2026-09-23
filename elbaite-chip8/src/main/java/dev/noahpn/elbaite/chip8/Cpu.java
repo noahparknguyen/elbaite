@@ -220,9 +220,10 @@ public final class Cpu {
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, {@code ANNN}, and {@code DXYN}. Every
-     * other opcode throws, including ones that are legal CHIP-8 but not yet implemented
-     * here — this is not a validation failure, it is a "not yet" signal.
+     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, {@code 8XY0} through {@code 8XY3},
+     * {@code ANNN}, and {@code DXYN}. Every other opcode throws, including ones that are
+     * legal CHIP-8 but not yet implemented here — this is not a validation failure, it
+     * is a "not yet" signal.
      *
      * @param opcode the instruction to run
      * @throws UnsupportedOperationException if the opcode has no handler yet
@@ -233,6 +234,7 @@ public final class Cpu {
             case 0x1 -> op1NNN(opcode);
             case 0x6 -> op6XNN(opcode);
             case 0x7 -> op7XNN(opcode);
+            case 0x8 -> dispatch8(opcode);
             case 0xA -> opANNN(opcode);
             case 0xD -> opDXYN(opcode);
             default -> throw notImplemented(opcode);
@@ -267,6 +269,18 @@ public final class Cpu {
         }
     }
 
+    // In 8XYN, X and Y select the register operands, so the last nibble is the only
+    // field left to choose the operation. That is what this switches on.
+    private void dispatch8(Opcode opcode) {
+        switch (opcode.n()) {
+            case 0x0 -> op8XY0(opcode);
+            case 0x1 -> op8XY1(opcode);
+            case 0x2 -> op8XY2(opcode);
+            case 0x3 -> op8XY3(opcode);
+            default -> throw notImplemented(opcode);
+        }
+    }
+
     private UnsupportedOperationException notImplemented(Opcode opcode) {
         return new UnsupportedOperationException(
             String.format("CHIP-8 opcode not implemented: 0x%04X", opcode.value()));
@@ -286,6 +300,36 @@ public final class Cpu {
 
     private void op7XNN(Opcode opcode) {
         writeRegister(opcode.x(), (readRegister(opcode.x()) + opcode.nn()) & 0xFF);
+    }
+
+    private void op8XY0(Opcode opcode) {
+        int vy = readRegister(opcode.y());
+
+        writeRegister(opcode.x(), vy);
+    }
+
+    private void op8XY1(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        writeRegister(opcode.x(), vx | vy);
+        writeRegister(0xF, 0);
+    }
+
+    private void op8XY2(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        writeRegister(opcode.x(), vx & vy);
+        writeRegister(0xF, 0);
+    }
+
+    private void op8XY3(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        writeRegister(opcode.x(), vx ^ vy);
+        writeRegister(0xF, 0);
     }
 
     private void opANNN(Opcode opcode) {
@@ -352,5 +396,7 @@ public final class Cpu {
         }
 
         display.dump();
+        IO.println();
+        cpu.dump();
     }
 }

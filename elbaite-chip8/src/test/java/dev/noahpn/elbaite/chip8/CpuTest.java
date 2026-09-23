@@ -172,6 +172,76 @@ class CpuTest {
         assertEquals(0x42, cpu.readRegister(0xF));
     }
 
+    // 8XY0
+    @Test
+    void copyRegisterStoresSource() {
+        cpu.writeRegister(0x1, 0xFF);
+
+        cpu.execute(new Opcode(0x8010));
+
+        assertEquals(0xFF, cpu.readRegister(0x0));
+        assertEquals(0xFF, cpu.readRegister(0x1));
+    }
+
+    @Test
+    void copyRegisterLeavesFlagAlone() {
+        cpu.writeRegister(0xF, 1);
+        cpu.writeRegister(0x1, 0xFF);
+
+        cpu.execute(new Opcode(0x8010));
+
+        assertEquals(1, cpu.readRegister(0xF));
+    }
+
+    // 8XY1
+    @Test
+    void orCombinesBits() {
+        cpu.writeRegister(0x0, 0xF0);
+        cpu.writeRegister(0x1, 0x3C);
+
+        cpu.execute(new Opcode(0x8011));
+
+        assertEquals(0xFC, cpu.readRegister(0x0));
+    }
+
+    // 8XY2
+    @Test
+    void andCombinesBits() {
+        cpu.writeRegister(0x0, 0xF0);
+        cpu.writeRegister(0x1, 0x3C);
+
+        cpu.execute(new Opcode(0x8012));
+
+        assertEquals(0x30, cpu.readRegister(0x0));
+    }
+
+    // 8XY3
+    @Test
+    void xorCombinesBits() {
+        cpu.writeRegister(0x0, 0xF0);
+        cpu.writeRegister(0x1, 0x3C);
+
+        cpu.execute(new Opcode(0x8013));
+
+        assertEquals(0xCC, cpu.readRegister(0x0));
+    }
+
+    // 8XY1-8XY3 share the vF reset
+    @Test
+    void logicOperationsResetFlag() {
+        cpu.writeRegister(0xF, 1);
+        cpu.execute(new Opcode(0x8011));
+        assertEquals(0, cpu.readRegister(0xF));
+
+        cpu.writeRegister(0xF, 1);
+        cpu.execute(new Opcode(0x8012));
+        assertEquals(0, cpu.readRegister(0xF));
+
+        cpu.writeRegister(0xF, 1);
+        cpu.execute(new Opcode(0x8013));
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
     // ANNN
     @Test
     void setIndexStoresAddress() {
@@ -277,8 +347,10 @@ class CpuTest {
     void unimplementedOpcodeThrows() {
         // 00EE reaches dispatch0's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EE)));
-        // 8000 reaches execute's default
-        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x8000)));
+        // 9000 reaches execute's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x9000)));
+        // 8009 reaches dispatch8's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x8009)));
     }
 
     // --- Step ---
