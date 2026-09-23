@@ -242,6 +242,176 @@ class CpuTest {
         assertEquals(0, cpu.readRegister(0xF));
     }
 
+    // 8XY4
+    @Test
+    void addRegistersStoresSum() {
+        // 0xF0 + 0x20 is 0x110, so the low byte is 0x10. That is the wrap, and it
+        // also proves the write is the low byte rather than the untruncated sum.
+        cpu.writeRegister(0x0, 0xF0);
+        cpu.writeRegister(0x1, 0x20);
+
+        cpu.execute(new Opcode(0x8014));
+
+        assertEquals(0x10, cpu.readRegister(0x0));
+    }
+
+    @Test
+    void addRegistersUpdatesCarryFlag() {
+        // Carry is the ninth bit: 0xFF + 0x01 is the smallest sum that has one.
+        cpu.writeRegister(0xF, 0);
+        cpu.writeRegister(0x0, 0xFF);
+        cpu.writeRegister(0x1, 0x01);
+
+        cpu.execute(new Opcode(0x8014));
+
+        assertEquals(1, cpu.readRegister(0xF));
+
+        // A sentinel in VF catches a missing clear: without it, VF would stay 1.
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0x01);
+        cpu.writeRegister(0x1, 0x02);
+
+        cpu.execute(new Opcode(0x8014));
+
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
+    // 8XY5
+    @Test
+    void subtractRegistersStoresDifference() {
+        // VX - VY, and the low byte is what lands in VX. 0x10 - 0x20 is negative,
+        // so the low byte is 0xF0 and VF is tested separately.
+        cpu.writeRegister(0x0, 0x10);
+        cpu.writeRegister(0x1, 0x20);
+
+        cpu.execute(new Opcode(0x8015));
+
+        assertEquals(0xF0, cpu.readRegister(0x0));
+    }
+
+    @Test
+    void subtractRegistersUpdatesBorrowFlag() {
+        // VF is 1 when VX >= VY, which is the no-borrow case. Equal counts as no borrow.
+        cpu.writeRegister(0xF, 0);
+        cpu.writeRegister(0x0, 0x20);
+        cpu.writeRegister(0x1, 0x20);
+
+        cpu.execute(new Opcode(0x8015));
+
+        assertEquals(1, cpu.readRegister(0xF));
+
+        // A sentinel in VF catches a missing clear on the borrow case.
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0x10);
+        cpu.writeRegister(0x1, 0x20);
+
+        cpu.execute(new Opcode(0x8015));
+
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
+    // 8XY6
+    @Test
+    void shiftRightShiftsVyIntoVx() {
+        // VY is the source and VX the destination, so VY has to stay unchanged.
+        cpu.writeRegister(0x0, 0xAA);
+        cpu.writeRegister(0x1, 0x03);
+
+        cpu.execute(new Opcode(0x8016));
+
+        assertEquals(0x01, cpu.readRegister(0x0));
+        assertEquals(0x03, cpu.readRegister(0x1));
+    }
+
+    @Test
+    void shiftRightUpdatesFlagFromLeastSignificantBit() {
+        // The flag is the bit shifted out: 0x01 has a 1, 0x02 has a 0.
+        cpu.writeRegister(0xF, 0);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0x01);
+
+        cpu.execute(new Opcode(0x8016));
+
+        assertEquals(1, cpu.readRegister(0xF));
+
+        // A sentinel in VF catches a missing clear on the zero-bit case.
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0x02);
+
+        cpu.execute(new Opcode(0x8016));
+
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
+    // 8XY7
+    @Test
+    void subtractVxFromVyStoresDifference() {
+        // VY - VX, not VX - VY. 0x34 - 0x12 = 0x22.
+        cpu.writeRegister(0x0, 0x12);
+        cpu.writeRegister(0x1, 0x34);
+
+        cpu.execute(new Opcode(0x8017));
+
+        assertEquals(0x22, cpu.readRegister(0x0));
+    }
+
+    @Test
+    void subtractVxFromVyUpdatesBorrowFlag() {
+        // VF is 1 when VY >= VX, which is the no-borrow case. Equal counts as no borrow.
+        cpu.writeRegister(0xF, 0);
+        cpu.writeRegister(0x0, 0x20);
+        cpu.writeRegister(0x1, 0x20);
+
+        cpu.execute(new Opcode(0x8017));
+
+        assertEquals(1, cpu.readRegister(0xF));
+
+        // A sentinel in VF catches a missing clear on the borrow case.
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0x20);
+        cpu.writeRegister(0x1, 0x10);
+
+        cpu.execute(new Opcode(0x8017));
+
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
+    // 8XYE
+    @Test
+    void shiftLeftShiftsVyIntoVx() {
+        // VY is the source and VX the destination, so VY has to stay unchanged.
+        // 0x81 << 1 is 0x102, and the low byte is 0x02.
+        cpu.writeRegister(0x0, 0xAA);
+        cpu.writeRegister(0x1, 0x81);
+
+        cpu.execute(new Opcode(0x801E));
+
+        assertEquals(0x02, cpu.readRegister(0x0));
+        assertEquals(0x81, cpu.readRegister(0x1));
+    }
+
+    @Test
+    void shiftLeftUpdatesFlagFromMostSignificantBit() {
+        // The flag is the bit shifted out: 0x80 has a 1, 0x40 has a 0.
+        cpu.writeRegister(0xF, 0);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0x80);
+
+        cpu.execute(new Opcode(0x801E));
+
+        assertEquals(1, cpu.readRegister(0xF));
+
+        // A sentinel in VF catches a missing clear on the zero-bit case.
+        cpu.writeRegister(0xF, 0xAA);
+        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x1, 0x40);
+
+        cpu.execute(new Opcode(0x801E));
+
+        assertEquals(0, cpu.readRegister(0xF));
+    }
+
     // ANNN
     @Test
     void setIndexStoresAddress() {

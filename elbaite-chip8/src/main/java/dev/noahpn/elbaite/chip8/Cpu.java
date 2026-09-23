@@ -220,7 +220,7 @@ public final class Cpu {
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, {@code 8XY0} through {@code 8XY3},
+     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family,
      * {@code ANNN}, and {@code DXYN}. Every other opcode throws, including ones that are
      * legal CHIP-8 but not yet implemented here — this is not a validation failure, it
      * is a "not yet" signal.
@@ -277,6 +277,11 @@ public final class Cpu {
             case 0x1 -> op8XY1(opcode);
             case 0x2 -> op8XY2(opcode);
             case 0x3 -> op8XY3(opcode);
+            case 0x4 -> op8XY4(opcode);
+            case 0x5 -> op8XY5(opcode);
+            case 0x6 -> op8XY6(opcode);
+            case 0x7 -> op8XY7(opcode);
+            case 0xE -> op8XYE(opcode);
             default -> throw notImplemented(opcode);
         }
     }
@@ -284,6 +289,14 @@ public final class Cpu {
     private UnsupportedOperationException notImplemented(Opcode opcode) {
         return new UnsupportedOperationException(
             String.format("CHIP-8 opcode not implemented: 0x%04X", opcode.value()));
+    }
+
+    private void setFlag(boolean set) {
+        if (set) {
+            writeRegister(0xF, 1);
+        } else {
+            writeRegister(0xF, 0);
+        }
     }
 
     private void op00E0() {
@@ -313,7 +326,7 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx | vy);
-        writeRegister(0xF, 0);
+        setFlag(false);
     }
 
     private void op8XY2(Opcode opcode) {
@@ -321,7 +334,7 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx & vy);
-        writeRegister(0xF, 0);
+        setFlag(false);
     }
 
     private void op8XY3(Opcode opcode) {
@@ -329,7 +342,60 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx ^ vy);
-        writeRegister(0xF, 0);
+        setFlag(false);
+    }
+
+    private void op8XY4(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        int result = vx + vy;
+
+        writeRegister(opcode.x(), result & 0xFF);
+
+        setFlag(result > REGISTER_MAX);
+    }
+
+    private void op8XY5(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        int result = vx - vy;
+
+        writeRegister(opcode.x(), result & 0xFF);
+
+        setFlag(vx >= vy);
+    }
+
+    private void op8XY6(Opcode opcode) {
+        int vy = readRegister(opcode.y());
+
+        int result = vy >>> 1;
+
+        writeRegister(opcode.x(), result & 0xFF);
+
+        setFlag((vy & 1) != 0);
+    }
+
+    private void op8XY7(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        int result = vy - vx;
+
+        writeRegister(opcode.x(), result & 0xFF);
+
+        setFlag(vy >= vx);
+    }
+
+    private void op8XYE(Opcode opcode) {
+        int vy = readRegister(opcode.y());
+
+        int result = vy << 1;
+
+        writeRegister(opcode.x(), result & 0xFF);
+
+        setFlag(((vy >>> 7) & 1) != 0);
     }
 
     private void opANNN(Opcode opcode) {
@@ -368,7 +434,7 @@ public final class Cpu {
             }
         }
 
-        writeRegister(0xF, collision ? 1 : 0);
+        setFlag(collision);
     }
 
     static void main(String[] args) {
