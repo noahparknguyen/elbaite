@@ -9,10 +9,12 @@ trim_trailing_whitespace = true
 [*.java]
 indent_style = space
 indent_size = 4
-max_line_length = 120
-# Pinned rather than left to the IDE scheme: hand-wrapped throws kept collapsing onto one
-# line. wrap_long_lines was tried alongside this and removed -- it "fixes" an over-long
-# line by splitting string literals into concatenations, which is worse than the problem.
+max_line_length = 100
+# The margin is 100, not 120, because that is where the code is actually wrapped by hand.
+# With it at 120 the formatter kept joining wrapped calls back onto one ~119-char line,
+# landing in the gap between the declared limit and the real style. keep_line_breaks is
+# pinned too. wrap_long_lines was tried and removed: it "fixes" a long line by splitting
+# string literals into concatenations, which is worse than the problem.
 ij_java_keep_line_breaks = true
 
 [*.xml]

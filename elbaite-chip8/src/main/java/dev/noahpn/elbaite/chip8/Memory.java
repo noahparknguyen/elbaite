@@ -65,8 +65,8 @@ public final class Memory {
     public void loadRom(byte[] rom) {
         if (rom.length > SIZE - PROGRAM_START) {
             throw new IllegalArgumentException(
-                "CHIP-8 ROM too large: " + rom.length + " bytes (max: " + (SIZE - PROGRAM_START) + ")"
-            );
+                "CHIP-8 ROM too large: " + rom.length
+                    + " bytes (max: " + (SIZE - PROGRAM_START) + ")");
         }
         for (int i = 0; i < rom.length; i++) {
             write(PROGRAM_START + i, Byte.toUnsignedInt(rom[i]));
@@ -121,10 +121,9 @@ public final class Memory {
     public void write(int address, int value) {
         checkAddress(address);
 
-        if (value < 0 || value > 255) {
+        if (value < 0 || value > 0xFF) {
             throw new IllegalArgumentException(
-                "CHIP-8 memory value out of range: " + value + " (valid: 0x00-0xFF)"
-            );
+                "CHIP-8 memory value out of range: " + value + " (valid: 0x00-0xFF)");
         }
         memory[address] = (byte) value;
     }
@@ -132,8 +131,7 @@ public final class Memory {
     private void checkAddress(int address) {
         if (address < 0 || address >= SIZE) {
             throw new IndexOutOfBoundsException(
-                "CHIP-8 address out of range: " + address + " (valid: 0x000-0xFFF)"
-            );
+                "CHIP-8 address out of range: " + address + " (valid: 0x000-0xFFF)");
         }
     }
 
