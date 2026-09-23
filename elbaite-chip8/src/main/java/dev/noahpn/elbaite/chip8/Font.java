@@ -7,9 +7,10 @@ package dev.noahpn.elbaite.chip8;
  * most significant bit leftmost. Glyphs are four pixels wide, so only the top four bits
  * of each byte carry a pixel and the low four are always zero.
  *
- * <p>This is deliberately not the standard CHIP-8 font. Seven glyphs are redrawn, which
- * is safe because nothing reads a glyph's shape: {@code FX29} returns a glyph's address
- * and {@code DXYN} draws whatever bytes it finds there.
+ * <p>This is deliberately not the standard CHIP-8 font. Six glyphs are redrawn —
+ * {@code 1}, {@code 7}, {@code A}, {@code C}, {@code E} and {@code F} — which is safe
+ * because nothing reads a glyph's shape: {@code FX29} returns a glyph's address and
+ * {@code DXYN} draws whatever bytes it finds there.
  */
 public final class Font {
 
