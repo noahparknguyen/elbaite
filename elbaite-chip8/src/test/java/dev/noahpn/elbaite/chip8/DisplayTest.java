@@ -35,10 +35,13 @@ class DisplayTest {
 
     @Test
     void flipPixelReturnsPreviousState() {
-        display.setPixel(0, 0, true);
+        // Dark to lit: reports that the pixel was off.
+        boolean previous = display.flipPixel(0, 0);
+        assertFalse(previous);
         assertTrue(display.getPixel(0, 0));
 
-        boolean previous = display.flipPixel(0, 0);
+        // Lit to dark: reports that the pixel was on.
+        previous = display.flipPixel(0, 0);
         assertTrue(previous);
         assertFalse(display.getPixel(0, 0));
     }

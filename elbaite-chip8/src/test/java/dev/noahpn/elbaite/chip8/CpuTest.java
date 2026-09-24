@@ -144,6 +144,65 @@ class CpuTest {
         assertEquals(0xABC, cpu.getProgramCounter());
     }
 
+    // 3XNN
+    @Test
+    void skipIfEqualSkipsOnMatch() {
+        cpu.writeRegister(0xA, 0x42);
+
+        cpu.execute(new Opcode(0x3A42));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfEqualDoesNotSkipOnMismatch() {
+        cpu.writeRegister(0xA, 0x41);
+
+        cpu.execute(new Opcode(0x3A42));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
+    // 4XNN
+    @Test
+    void skipIfNotEqualSkipsOnMismatch() {
+        cpu.writeRegister(0xA, 0x41);
+
+        cpu.execute(new Opcode(0x4A42));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfNotEqualDoesNotSkipOnMatch() {
+        cpu.writeRegister(0xA, 0x42);
+
+        cpu.execute(new Opcode(0x4A42));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
+    // 5XY0
+    @Test
+    void skipIfRegistersEqualSkipsOnMatch() {
+        cpu.writeRegister(0xA, 0x42);
+        cpu.writeRegister(0xB, 0x42);
+
+        cpu.execute(new Opcode(0x5AB0));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfRegistersEqualDoesNotSkipOnMismatch() {
+        cpu.writeRegister(0xA, 0x42);
+        cpu.writeRegister(0xB, 0x43);
+
+        cpu.execute(new Opcode(0x5AB0));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
     // 6XNN
     @Test
     void setRegisterStoresValue() {
@@ -185,12 +244,12 @@ class CpuTest {
 
     @Test
     void copyRegisterLeavesFlagAlone() {
-        cpu.writeRegister(0xF, 1);
+        cpu.writeRegister(0xF, 0x42);
         cpu.writeRegister(0x1, 0xFF);
 
         cpu.execute(new Opcode(0x8010));
 
-        assertEquals(1, cpu.readRegister(0xF));
+        assertEquals(0x42, cpu.readRegister(0xF));
     }
 
     // 8XY1
@@ -246,7 +305,7 @@ class CpuTest {
     @Test
     void addRegistersStoresSum() {
         // 0xF0 + 0x20 is 0x110, so the low byte is 0x10. That is the wrap, and it
-        // also proves the write is the low byte rather than the untruncated sum.
+        // also proves VX gets the low byte rather than the untruncated sum.
         cpu.writeRegister(0x0, 0xF0);
         cpu.writeRegister(0x1, 0x20);
 
@@ -412,12 +471,53 @@ class CpuTest {
         assertEquals(0, cpu.readRegister(0xF));
     }
 
+    // 9XY0
+    @Test
+    void skipIfRegistersNotEqualSkipsOnMismatch() {
+        cpu.writeRegister(0xA, 0x42);
+        cpu.writeRegister(0xB, 0x43);
+
+        cpu.execute(new Opcode(0x9AB0));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfRegistersNotEqualDoesNotSkipOnMatch() {
+        cpu.writeRegister(0xA, 0x42);
+        cpu.writeRegister(0xB, 0x42);
+
+        cpu.execute(new Opcode(0x9AB0));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
     // ANNN
     @Test
     void setIndexStoresAddress() {
         cpu.execute(new Opcode(0xA123));
 
         assertEquals(0x123, cpu.getIndexRegister());
+    }
+
+    // BNNN
+    @Test
+    void jumpWithOffsetAddsV0() {
+        // A correct handler never reads V3. It is set because X is 3 in B300, so a
+        // handler that added VX instead of V0 would land on 0x310, not 0x304.
+        cpu.writeRegister(0x0, 0x04);
+        cpu.writeRegister(0x3, 0x10);
+
+        cpu.execute(new Opcode(0xB300));
+
+        assertEquals(0x304, cpu.getProgramCounter());
+    }
+
+    @Test
+    void jumpWithOffsetPastMemoryThrows() {
+        cpu.writeRegister(0x0, 0x01);
+
+        assertThrows(IndexOutOfBoundsException.class, () -> cpu.execute(new Opcode(0xBFFF)));
     }
 
     // DXYN
@@ -517,10 +617,14 @@ class CpuTest {
     void unimplementedOpcodeThrows() {
         // 00EE reaches dispatch0's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EE)));
-        // 9000 reaches execute's default
-        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x9000)));
+        // E000 reaches execute's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xE000)));
         // 8009 reaches dispatch8's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x8009)));
+        // 5AB1 reaches op5XY0's nibble check
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x5AB1)));
+        // 9AB1 reaches op9XY0's nibble check
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x9AB1)));
     }
 
     // --- Step ---

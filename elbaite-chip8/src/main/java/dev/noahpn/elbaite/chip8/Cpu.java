@@ -220,22 +220,33 @@ public final class Cpu {
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 1NNN}, {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family,
-     * {@code ANNN}, and {@code DXYN}. Every other opcode throws, including ones that are
-     * legal CHIP-8 but not yet implemented here — this is not a validation failure, it
-     * is a "not yet" signal.
+     * {@code 1NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0}, {@code 6XNN},
+     * {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
+     * {@code BNNN}, and {@code DXYN}. Every other opcode throws: either it is legal
+     * CHIP-8 that is not implemented here yet, which is a "not yet" signal rather than a
+     * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
      *
      * @param opcode the instruction to run
-     * @throws UnsupportedOperationException if the opcode has no handler yet
+     * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
+     *                                       such as {@code BNNN} jumping past
+     *                                       {@code 0xFFF}, or {@code DXYN} reading a
+     *                                       sprite byte past it
+     * @throws UnsupportedOperationException if the opcode has no handler yet, or if it
+     *                                       is not defined by CHIP-8 at all
      */
     public void execute(Opcode opcode) {
         switch (opcode.high()) {
             case 0x0 -> dispatch0(opcode);
             case 0x1 -> op1NNN(opcode);
+            case 0x3 -> op3XNN(opcode);
+            case 0x4 -> op4XNN(opcode);
+            case 0x5 -> op5XY0(opcode);
             case 0x6 -> op6XNN(opcode);
             case 0x7 -> op7XNN(opcode);
             case 0x8 -> dispatch8(opcode);
+            case 0x9 -> op9XY0(opcode);
             case 0xA -> opANNN(opcode);
+            case 0xB -> opBNNN(opcode);
             case 0xD -> opDXYN(opcode);
             default -> throw notImplemented(opcode);
         }
@@ -251,8 +262,13 @@ public final class Cpu {
      *
      * @return the opcode that was fetched and executed
      * @throws IndexOutOfBoundsException     if the program counter is too close to
-     *                                       the top of the address space to fetch
-     * @throws UnsupportedOperationException if the opcode has no handler yet
+     *                                       the top of the address space to fetch,
+     *                                       or the instruction reaches outside
+     *                                       memory, such as {@code BNNN} jumping past
+     *                                       {@code 0xFFF} or {@code DXYN} reading a
+     *                                       sprite byte past it
+     * @throws UnsupportedOperationException if the opcode has no handler yet, or is
+     *                                       not defined by CHIP-8 at all
      */
     public Opcode step() {
         Opcode opcode = fetch();
@@ -299,12 +315,39 @@ public final class Cpu {
         }
     }
 
+    private void skipIf(boolean condition) {
+        if (condition) {
+            advanceProgramCounter();
+        }
+    }
+
     private void op00E0() {
         display.clear();
     }
 
     private void op1NNN(Opcode opcode) {
         setProgramCounter(opcode.nnn());
+    }
+
+    private void op3XNN(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        skipIf(vx == opcode.nn());
+    }
+
+    private void op4XNN(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        skipIf(vx != opcode.nn());
+    }
+
+    private void op5XY0(Opcode opcode) {
+        if (opcode.n() != 0) {
+            throw notImplemented(opcode);
+        }
+
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        skipIf(vx == vy);
     }
 
     private void op6XNN(Opcode opcode) {
@@ -398,8 +441,25 @@ public final class Cpu {
         setFlag(((vy >>> 7) & 1) != 0);
     }
 
+    private void op9XY0(Opcode opcode) {
+        if (opcode.n() != 0) {
+            throw notImplemented(opcode);
+        }
+
+        int vx = readRegister(opcode.x());
+        int vy = readRegister(opcode.y());
+
+        skipIf(vx != vy);
+    }
+
     private void opANNN(Opcode opcode) {
         setIndexRegister(opcode.nnn());
+    }
+
+    private void opBNNN(Opcode opcode) {
+        int v0 = readRegister(0x0);
+
+        setProgramCounter(opcode.nnn() + v0);
     }
 
     private void opDXYN(Opcode opcode) {
