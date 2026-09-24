@@ -90,7 +90,6 @@ public final class Font {
     }
 
     static void main() {
-        IO.println(renderRow(0xA5, 8));
         for (int i = 0; i < GLYPH_COUNT; i++) {
             printGlyph(i);
             IO.println();
