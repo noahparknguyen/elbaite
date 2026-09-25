@@ -676,6 +676,90 @@ class CpuTest {
         }
     }
 
+    // FX1E
+    @Test
+    void addToIndexStoresSum() {
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0xA, 0x42);
+
+        cpu.execute(new Opcode(0xFA1E));
+
+        assertEquals(0x342, cpu.getIndexRegister());
+    }
+
+    @Test
+    void addToIndexWrapsAtSixteenBits() {
+        cpu.setIndexRegister(0xFFFF);
+        cpu.writeRegister(0xA, 0x01);
+
+        cpu.execute(new Opcode(0xFA1E));
+
+        assertEquals(0x0000, cpu.getIndexRegister());
+    }
+
+    @Test
+    void addToIndexLeavesFlagAlone() {
+        cpu.setIndexRegister(0x0FFF);
+        cpu.writeRegister(0xF, 0x42);
+        cpu.writeRegister(0xA, 0x01);
+
+        cpu.execute(new Opcode(0xFA1E));
+
+        assertEquals(0x42, cpu.readRegister(0xF));
+    }
+
+    // FX55
+    @Test
+    void storeRegistersWritesV0ThroughVx() {
+        cpu.writeRegister(0x0, 0x11);
+        cpu.writeRegister(0x1, 0x22);
+        cpu.writeRegister(0x2, 0x33);
+        cpu.writeRegister(0x3, 0x44);
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xF255));
+
+        assertEquals(0x11, memory.read(0x300));
+        assertEquals(0x22, memory.read(0x301));
+        assertEquals(0x33, memory.read(0x302));
+        assertEquals(0x00, memory.read(0x303));
+    }
+
+    @Test
+    void storeRegistersAdvancesIndex() {
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xF255));
+
+        assertEquals(0x303, cpu.getIndexRegister());
+    }
+
+    // FX65
+    @Test
+    void loadRegistersReadsV0ThroughVx() {
+        cpu.setIndexRegister(0x300);
+        memory.write(0x300, 0x11);
+        memory.write(0x301, 0x22);
+        memory.write(0x302, 0x33);
+        memory.write(0x303, 0x44);
+
+        cpu.execute(new Opcode(0xF265));
+
+        assertEquals(0x11, cpu.readRegister(0x0));
+        assertEquals(0x22, cpu.readRegister(0x1));
+        assertEquals(0x33, cpu.readRegister(0x2));
+        assertEquals(0x00, cpu.readRegister(0x3));
+    }
+
+    @Test
+    void loadRegistersAdvancesIndex() {
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xF265));
+
+        assertEquals(0x303, cpu.getIndexRegister());
+    }
+
     // No handler
     @Test
     void unimplementedOpcodeThrows() {
@@ -689,6 +773,8 @@ class CpuTest {
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x5AB1)));
         // 9AB1 reaches op9XY0's nibble check
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x9AB1)));
+        // F0FF reaches dispatchF's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xF0FF)));
     }
 
     // --- Step ---

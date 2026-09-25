@@ -30,6 +30,7 @@ public final class Cpu {
     private static final int INDEX_MAX = 0xFFFF;
     private static final int ADDRESS_MAX = 0xFFF;
     private static final int STACK_DEPTH = 16;
+    private static final int DEFAULT_STEPS = 100;
 
     private final int[] registers = new int[REGISTER_COUNT];
     private final int[] stack = new int[STACK_DEPTH];
@@ -237,15 +238,18 @@ public final class Cpu {
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
      * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
      * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, and {@code DXYN}. Every other opcode throws: either it is legal CHIP-8
-     * that is not implemented here yet, which is a "not yet" signal rather than a
-     * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
+     * {@code BNNN}, {@code DXYN}, {@code FX1E}, {@code FX55}, and {@code FX65}. Every
+     * other opcode throws: either it is legal CHIP-8 that is not implemented here yet,
+     * which is a "not yet" signal rather than a validation failure, or CHIP-8 does not
+     * define it at all, such as {@code 5XY1}.
      *
      * @param opcode the instruction to run
      * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
      *                                       such as {@code BNNN} jumping past
-     *                                       {@code 0xFFF}, or {@code DXYN} reading a
-     *                                       sprite byte past it
+     *                                       {@code 0xFFF}, {@code DXYN} reading a
+     *                                       sprite byte past it, or {@code FX55} or
+     *                                       {@code FX65} with {@code I + X} past
+     *                                       {@code 0xFFF}
      * @throws UnsupportedOperationException if the opcode has no handler yet, or if it
      *                                       is not defined by CHIP-8 at all
      * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls
@@ -267,6 +271,7 @@ public final class Cpu {
             case 0xA -> opANNN(opcode);
             case 0xB -> opBNNN(opcode);
             case 0xD -> opDXYN(opcode);
+            case 0xF -> dispatchF(opcode);
             default -> throw notImplemented(opcode);
         }
     }
@@ -284,8 +289,10 @@ public final class Cpu {
      *                                       the top of the address space to fetch,
      *                                       or the instruction reaches outside
      *                                       memory, such as {@code BNNN} jumping past
-     *                                       {@code 0xFFF} or {@code DXYN} reading a
-     *                                       sprite byte past it
+     *                                       {@code 0xFFF}, {@code DXYN} reading a
+     *                                       sprite byte past it, or {@code FX55} or
+     *                                       {@code FX65} with {@code I + X} past
+     *                                       {@code 0xFFF}
      * @throws UnsupportedOperationException if the opcode has no handler yet, or is
      *                                       not defined by CHIP-8 at all
      * @throws IllegalStateException         if the instruction is {@code 2NNN} with
@@ -321,6 +328,17 @@ public final class Cpu {
             case 0x6 -> op8XY6(opcode);
             case 0x7 -> op8XY7(opcode);
             case 0xE -> op8XYE(opcode);
+            default -> throw notImplemented(opcode);
+        }
+    }
+
+    // In FXNN, X selects the register operand, so the low byte is the field left to
+    // choose the operation. That is what this switches on.
+    private void dispatchF(Opcode opcode) {
+        switch (opcode.nn()) {
+            case 0x1E -> opFX1E(opcode);
+            case 0x55 -> opFX55(opcode);
+            case 0x65 -> opFX65(opcode);
             default -> throw notImplemented(opcode);
         }
     }
@@ -549,10 +567,50 @@ public final class Cpu {
         setFlag(collision);
     }
 
+    private void opFX1E(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+
+        setIndexRegister((index + vx) & 0xFFFF);
+    }
+
+    private void opFX55(Opcode opcode) {
+        int start = index;
+        for (int i = 0x0; i <= opcode.x(); i++) {
+            int value = readRegister(i);
+            memory.write(start + i, value);
+        }
+
+        setIndexRegister(start + opcode.x() + 1);
+    }
+
+    private void opFX65(Opcode opcode) {
+        int start = index;
+        for (int i = 0x0; i <= opcode.x(); i++) {
+            int value = memory.read(start + i);
+            writeRegister(i, value);
+        }
+
+        setIndexRegister(start + opcode.x() + 1);
+    }
+
     static void main(String[] args) {
-        if (args.length != 1) {
-            IO.println("Usage: Cpu <rom-path>");
+        if (args.length < 1 || args.length > 2) {
+            IO.println("Usage: Cpu <rom-path> [steps]");
             return;
+        }
+
+        int steps = DEFAULT_STEPS;
+        if (args.length == 2) {
+            try {
+                steps = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                IO.println("Usage: Cpu <rom-path> [steps]");
+                return;
+            }
+            if (steps < 1) {
+                IO.println("Usage: Cpu <rom-path> [steps]");
+                return;
+            }
         }
 
         Memory memory = new Memory();
@@ -569,7 +627,7 @@ public final class Cpu {
         Display display = new Display();
         Cpu cpu = new Cpu(memory, display);
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < steps; i++) {
             cpu.step();
         }
 
