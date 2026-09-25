@@ -238,18 +238,19 @@ public final class Cpu {
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
      * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
      * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, {@code DXYN}, {@code FX1E}, {@code FX55}, and {@code FX65}. Every
-     * other opcode throws: either it is legal CHIP-8 that is not implemented here yet,
-     * which is a "not yet" signal rather than a validation failure, or CHIP-8 does not
-     * define it at all, such as {@code 5XY1}.
+     * {@code BNNN}, {@code DXYN}, {@code FX1E}, {@code FX29}, {@code FX33},
+     * {@code FX55}, and {@code FX65}. Every other opcode throws: either it is legal
+     * CHIP-8 that is not implemented here yet, which is a "not yet" signal rather than a
+     * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
      *
      * @param opcode the instruction to run
      * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
      *                                       such as {@code BNNN} jumping past
      *                                       {@code 0xFFF}, {@code DXYN} reading a
-     *                                       sprite byte past it, or {@code FX55} or
-     *                                       {@code FX65} with {@code I + X} past
-     *                                       {@code 0xFFF}
+     *                                       sprite byte past it, {@code FX33} with
+     *                                       {@code I + 2} past {@code 0xFFF}, or
+     *                                       {@code FX55} or {@code FX65} with
+     *                                       {@code I + X} past {@code 0xFFF}
      * @throws UnsupportedOperationException if the opcode has no handler yet, or if it
      *                                       is not defined by CHIP-8 at all
      * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls
@@ -290,9 +291,10 @@ public final class Cpu {
      *                                       or the instruction reaches outside
      *                                       memory, such as {@code BNNN} jumping past
      *                                       {@code 0xFFF}, {@code DXYN} reading a
-     *                                       sprite byte past it, or {@code FX55} or
-     *                                       {@code FX65} with {@code I + X} past
-     *                                       {@code 0xFFF}
+     *                                       sprite byte past it, {@code FX33} with
+     *                                       {@code I + 2} past {@code 0xFFF}, or
+     *                                       {@code FX55} or {@code FX65} with
+     *                                       {@code I + X} past {@code 0xFFF}
      * @throws UnsupportedOperationException if the opcode has no handler yet, or is
      *                                       not defined by CHIP-8 at all
      * @throws IllegalStateException         if the instruction is {@code 2NNN} with
@@ -337,6 +339,8 @@ public final class Cpu {
     private void dispatchF(Opcode opcode) {
         switch (opcode.nn()) {
             case 0x1E -> opFX1E(opcode);
+            case 0x29 -> opFX29(opcode);
+            case 0x33 -> opFX33(opcode);
             case 0x55 -> opFX55(opcode);
             case 0x65 -> opFX65(opcode);
             default -> throw notImplemented(opcode);
@@ -571,6 +575,24 @@ public final class Cpu {
         int vx = readRegister(opcode.x());
 
         setIndexRegister((index + vx) & 0xFFFF);
+    }
+
+    private void opFX29(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int digit = vx & 0xF;
+
+        setIndexRegister(Memory.FONT_START + digit * Font.GLYPH_BYTES);
+    }
+
+    private void opFX33(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+        int hundreds = vx / 100;
+        int tens = (vx / 10) % 10;
+        int ones = vx % 10;
+
+        memory.write(index, hundreds);
+        memory.write(index + 1, tens);
+        memory.write(index + 2, ones);
     }
 
     private void opFX55(Opcode opcode) {

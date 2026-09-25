@@ -708,6 +708,62 @@ class CpuTest {
         assertEquals(0x42, cpu.readRegister(0xF));
     }
 
+    // FX29
+    @Test
+    void fontCharacterPointsAtGlyph() {
+        cpu.writeRegister(0xA, 0x0B);
+
+        cpu.execute(new Opcode(0xFA29));
+
+        assertEquals(0x087, cpu.getIndexRegister());
+    }
+
+    @Test
+    void fontCharacterUsesLowNibble() {
+        cpu.writeRegister(0xA, 0x1B);
+
+        cpu.execute(new Opcode(0xFA29));
+
+        assertEquals(0x087, cpu.getIndexRegister());
+    }
+
+    // FX33
+    @Test
+    void bcdStoresHundredsTensOnes() {
+        cpu.writeRegister(0xA, 0x9C);
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xFA33));
+
+        assertEquals(0x01, memory.read(0x300));
+        assertEquals(0x05, memory.read(0x301));
+        assertEquals(0x06, memory.read(0x302));
+    }
+
+    @Test
+    void bcdOfSmallNumberKeepsLeadingZeros() {
+        cpu.writeRegister(0xA, 0x07);
+        cpu.setIndexRegister(0x300);
+        memory.write(0x300, 0xFF);
+        memory.write(0x301, 0xFF);
+
+        cpu.execute(new Opcode(0xFA33));
+
+        assertEquals(0x00, memory.read(0x300));
+        assertEquals(0x00, memory.read(0x301));
+        assertEquals(0x07, memory.read(0x302));
+    }
+
+    @Test
+    void bcdLeavesIndexAlone() {
+        cpu.writeRegister(0xA, 0x9C);
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xFA33));
+
+        assertEquals(0x300, cpu.getIndexRegister());
+    }
+
     // FX55
     @Test
     void storeRegistersWritesV0ThroughVx() {
