@@ -20,14 +20,7 @@ public final class Font {
 
     public static final int GLYPH_WIDTH = 4;
 
-    /**
-     * The glyph data, five bytes per glyph, glyph {@code 0} first.
-     *
-     * <p>Glyph {@code n} occupies indices {@code n * GLYPH_BYTES} through
-     * {@code n * GLYPH_BYTES + GLYPH_BYTES - 1}. Every value is {@code 0} to
-     * {@code 255}.
-     */
-    public static final int[] GLYPHS = {
+    private static final int[] GLYPHS = {
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0xE0, 0x20, 0x20, 0x20, 0xF0, // 1
         0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -47,6 +40,23 @@ public final class Font {
     };
 
     private Font() {
+    }
+
+    /**
+     * Returns a copy of the built-in glyph data, five bytes per glyph, glyph {@code 0}
+     * first.
+     *
+     * <p>Glyph {@code n} occupies indices {@code n * GLYPH_BYTES} through
+     * {@code n * GLYPH_BYTES + GLYPH_BYTES - 1}. Every value is {@code 0} to
+     * {@code 255}.
+     *
+     * <p>Each call returns a fresh copy. Changing the returned array has no effect on
+     * {@code Font}, so the caller may modify it freely.
+     *
+     * @return a copy of the glyph bytes
+     */
+    public static int[] glyphs() {
+        return GLYPHS.clone();
     }
 
     /**

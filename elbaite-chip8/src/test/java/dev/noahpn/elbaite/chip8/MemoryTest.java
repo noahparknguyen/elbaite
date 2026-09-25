@@ -19,14 +19,15 @@ class MemoryTest {
 
     @Test
     void fontLoadsAtFontStart() {
+        int[] glyphs = Font.glyphs();
         for (int i = 0; i < Font.GLYPH_BYTES; i++) {
-            assertEquals(Font.GLYPHS[i], memory.read(0x050 + i));
+            assertEquals(glyphs[i], memory.read(0x050 + i));
         }
 
         // Everything outside the font block is still zero.
         assertEquals(0x00, memory.read(0x000));
         assertEquals(0x00, memory.read(0x04F));
-        assertEquals(0x00, memory.read(0x050 + Font.GLYPHS.length));
+        assertEquals(0x00, memory.read(0x050 + glyphs.length));
     }
 
     // --- ROM loading ---

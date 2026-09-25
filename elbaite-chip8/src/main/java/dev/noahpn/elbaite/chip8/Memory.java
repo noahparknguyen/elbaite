@@ -40,7 +40,7 @@ public final class Memory {
     private final byte[] memory = new byte[SIZE];
 
     /**
-     * Creates a zeroed address space with {@link Font#GLYPHS} already loaded at
+     * Creates a zeroed address space with {@link Font#glyphs()} already loaded at
      * {@link #FONT_START}, so callers never load the font themselves.
      */
     public Memory() {
@@ -48,8 +48,9 @@ public final class Memory {
     }
 
     private void loadFont() {
-        for (int i = 0; i < Font.GLYPHS.length; i++) {
-            write(FONT_START + i, Font.GLYPHS[i]);
+        int[] glyphs = Font.glyphs();
+        for (int i = 0; i < glyphs.length; i++) {
+            write(FONT_START + i, glyphs[i]);
         }
     }
 
