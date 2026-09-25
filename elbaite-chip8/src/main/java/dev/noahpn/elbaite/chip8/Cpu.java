@@ -5,16 +5,18 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 /**
- * The CHIP-8 processor: its registers, and the fetch-decode-execute cycle that runs
- * instructions.
+ * The CHIP-8 processor: its registers, its call stack, and the fetch-decode-execute cycle
+ * that runs instructions.
  *
- * <p>It holds sixteen general registers, the index register, and the program counter.
- * The three are different widths and each is guarded separately. A general register
- * holds one byte, the index register holds sixteen bits, and the program counter holds a
- * twelve-bit address. Nothing about {@code int} enforces any of that.
+ * <p>It holds sixteen general registers, the index register, the program counter, and a
+ * sixteen-entry call stack. The first three are different widths and each is guarded
+ * separately. A general register holds one byte, the index register holds sixteen bits,
+ * and the program counter holds a twelve-bit address. Nothing about {@code int} enforces
+ * any of that.
  *
  * <p>A new instance has every general register zeroed, the index register at
- * {@code 0x0000}, and the program counter at {@link Memory#PROGRAM_START}.
+ * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, and an empty
+ * stack.
  *
  * <p>Like {@link Memory}, the public setters reject an out-of-range value rather than
  * truncating or wrapping it. Instructions follow the hardware instead: {@code 7XNN} wraps
@@ -27,8 +29,11 @@ public final class Cpu {
     private static final int REGISTER_MAX = 0xFF;
     private static final int INDEX_MAX = 0xFFFF;
     private static final int ADDRESS_MAX = 0xFFF;
+    private static final int STACK_DEPTH = 16;
 
     private final int[] registers = new int[REGISTER_COUNT];
+    private final int[] stack = new int[STACK_DEPTH];
+    private int stackPointer;
     private int index;
     private int programCounter = Memory.PROGRAM_START;
 
@@ -163,10 +168,11 @@ public final class Cpu {
     /**
      * Prints the whole register file to standard output: the sixteen general registers
      * four to a line, then the index register and the program counter on lines of their
-     * own.
+     * own, then the call stack on the last line, oldest entry first, or {@code -} when it
+     * is empty.
      *
-     * <p>Values are hex, two digits for a general register and four for {@code I} and
-     * {@code PC}.
+     * <p>Values are hex, two digits for a general register and four for {@code I},
+     * {@code PC} and each stack entry.
      */
     public void dump() {
         StringBuilder sb = new StringBuilder();
@@ -183,6 +189,15 @@ public final class Cpu {
 
         sb.append(String.format("I  %04X%n", index));
         sb.append(String.format("PC %04X%n", programCounter));
+        sb.append("STACK");
+        if (stackPointer == 0) {
+            sb.append(" -");
+        } else {
+            for (int i = 0; i < stackPointer; i++) {
+                sb.append(String.format(" %04X", stack[i]));
+            }
+        }
+        sb.append(System.lineSeparator());
 
         IO.print(sb.toString());
     }
@@ -220,10 +235,10 @@ public final class Cpu {
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 1NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0}, {@code 6XNN},
-     * {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, and {@code DXYN}. Every other opcode throws: either it is legal
-     * CHIP-8 that is not implemented here yet, which is a "not yet" signal rather than a
+     * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
+     * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
+     * {@code BNNN}, and {@code DXYN}. Every other opcode throws: either it is legal CHIP-8
+     * that is not implemented here yet, which is a "not yet" signal rather than a
      * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
      *
      * @param opcode the instruction to run
@@ -233,11 +248,15 @@ public final class Cpu {
      *                                       sprite byte past it
      * @throws UnsupportedOperationException if the opcode has no handler yet, or if it
      *                                       is not defined by CHIP-8 at all
+     * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls
+     *                                       already nested, or {@code 00EE} returns with
+     *                                       none
      */
     public void execute(Opcode opcode) {
         switch (opcode.high()) {
             case 0x0 -> dispatch0(opcode);
             case 0x1 -> op1NNN(opcode);
+            case 0x2 -> op2NNN(opcode);
             case 0x3 -> op3XNN(opcode);
             case 0x4 -> op4XNN(opcode);
             case 0x5 -> op5XY0(opcode);
@@ -269,6 +288,9 @@ public final class Cpu {
      *                                       sprite byte past it
      * @throws UnsupportedOperationException if the opcode has no handler yet, or is
      *                                       not defined by CHIP-8 at all
+     * @throws IllegalStateException         if the instruction is {@code 2NNN} with
+     *                                       sixteen calls already nested, or
+     *                                       {@code 00EE} with none
      */
     public Opcode step() {
         Opcode opcode = fetch();
@@ -281,6 +303,7 @@ public final class Cpu {
     private void dispatch0(Opcode opcode) {
         switch (opcode.value()) {
             case 0x00E0 -> op00E0();
+            case 0x00EE -> op00EE();
             default -> throw notImplemented(opcode);
         }
     }
@@ -321,21 +344,50 @@ public final class Cpu {
         }
     }
 
+    private void push(int address) {
+        if (stackPointer >= STACK_DEPTH) {
+            throw new IllegalStateException(
+                "CHIP-8 stack overflow: more than 16 nested calls");
+        }
+
+        stack[stackPointer++] = address;
+    }
+
+    private int pop() {
+        if (stackPointer == 0) {
+            throw new IllegalStateException(
+                "CHIP-8 stack underflow: 00EE with no call to return from");
+        }
+
+        return stack[--stackPointer];
+    }
+
     private void op00E0() {
         display.clear();
+    }
+
+    private void op00EE() {
+        setProgramCounter(pop());
     }
 
     private void op1NNN(Opcode opcode) {
         setProgramCounter(opcode.nnn());
     }
 
+    private void op2NNN(Opcode opcode) {
+        push(getProgramCounter());
+        setProgramCounter(opcode.nnn());
+    }
+
     private void op3XNN(Opcode opcode) {
         int vx = readRegister(opcode.x());
+
         skipIf(vx == opcode.nn());
     }
 
     private void op4XNN(Opcode opcode) {
         int vx = readRegister(opcode.x());
+
         skipIf(vx != opcode.nn());
     }
 
@@ -499,7 +551,7 @@ public final class Cpu {
 
     static void main(String[] args) {
         if (args.length != 1) {
-            IO.println("Usage: Cpu <rom-file>");
+            IO.println("Usage: Cpu <rom-path>");
             return;
         }
 

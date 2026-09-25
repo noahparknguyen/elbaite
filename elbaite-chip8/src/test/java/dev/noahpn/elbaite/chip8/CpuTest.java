@@ -136,12 +136,76 @@ class CpuTest {
         assertFalse(display.getPixel(0, 1));
     }
 
+    // 00EE
+    @Test
+    void returnResumesAfterCall() {
+        memory.write(0x200, 0x22);
+        memory.write(0x201, 0x06);
+        memory.write(0x206, 0x00);
+        memory.write(0x207, 0xEE);
+
+        cpu.step();
+        cpu.step();
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void nestedCallsReturnInReverseOrder() {
+        memory.write(0x200, 0x22);
+        memory.write(0x201, 0x10);
+        memory.write(0x210, 0x22);
+        memory.write(0x211, 0x20);
+        memory.write(0x212, 0x00);
+        memory.write(0x213, 0xEE);
+        memory.write(0x220, 0x00);
+        memory.write(0x221, 0xEE);
+
+        // Call, call, return: the first return goes back to the newest call, inside the
+        // outer subroutine. A queue would send it to 0x202 instead.
+        cpu.step();
+        cpu.step();
+        cpu.step();
+
+        assertEquals(0x212, cpu.getProgramCounter());
+
+        // The second return goes back to the main program.
+        cpu.step();
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void returnWithEmptyStackThrows() {
+        assertThrows(IllegalStateException.class, () -> cpu.execute(new Opcode(0x00EE)));
+    }
+
     // 1NNN
     @Test
     void jumpSetsProgramCounter() {
         cpu.execute(new Opcode(0x1ABC));
 
         assertEquals(0xABC, cpu.getProgramCounter());
+    }
+
+    // 2NNN
+    @Test
+    void callJumpsToAddress() {
+        cpu.execute(new Opcode(0x2ABC));
+
+        assertEquals(0xABC, cpu.getProgramCounter());
+    }
+
+    @Test
+    void callPastStackDepthThrows() {
+        // Sixteen calls fill the stack exactly, so the seventeenth is the first with
+        // nowhere to go.
+        Opcode opcode = new Opcode(0x2200);
+        for (int i = 1; i <= 16; i++) {
+            cpu.execute(opcode);
+        }
+
+        assertThrows(IllegalStateException.class, () -> cpu.execute(opcode));
     }
 
     // 3XNN
@@ -615,8 +679,8 @@ class CpuTest {
     // No handler
     @Test
     void unimplementedOpcodeThrows() {
-        // 00EE reaches dispatch0's default
-        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EE)));
+        // 00EF reaches dispatch0's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EF)));
         // E000 reaches execute's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xE000)));
         // 8009 reaches dispatch8's default
