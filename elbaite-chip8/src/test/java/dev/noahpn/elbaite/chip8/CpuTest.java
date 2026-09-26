@@ -3,6 +3,9 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.PrimitiveIterator;
+import java.util.stream.IntStream;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CpuTest {
@@ -582,6 +585,47 @@ class CpuTest {
         cpu.writeRegister(0x0, 0x01);
 
         assertThrows(IndexOutOfBoundsException.class, () -> cpu.execute(new Opcode(0xBFFF)));
+    }
+
+    // CXNN
+    @Test
+    void randomAndsWithMask() {
+        // Source is always 0xC3, so the only variation is the mask. 0xC3 & 0x0F is 0x03.
+        // An OR would give 0xCF, and ignoring the mask would give 0xC3.
+        cpu = new Cpu(memory, display, () -> 0xC3);
+
+        cpu.execute(new Opcode(0xCA0F));
+
+        assertEquals(0x03, cpu.readRegister(0xA));
+    }
+
+    @Test
+    void randomKeepsWholeByteUnderFullMask() {
+        // 0xFF keeps every bit, so VX should be the random byte itself. Writing NN
+        // instead would leave 0xFF here.
+        cpu = new Cpu(memory, display, () -> 0xC3);
+
+        cpu.execute(new Opcode(0xCAFF));
+
+        assertEquals(0xC3, cpu.readRegister(0xA));
+    }
+
+    @Test
+    void randomDrawsFreshValueEachTime() {
+        // Two different values in turn. If Cpu sampled once and reused the number,
+        // the second execute would still read 0x12.
+        PrimitiveIterator.OfInt it = IntStream.of(0x12, 0x34).iterator();
+        cpu = new Cpu(memory, display, it::nextInt);
+
+        // First draw.
+        cpu.execute(new Opcode(0xCAFF));
+
+        assertEquals(0x12, cpu.readRegister(0xA));
+
+        // Second draw.
+        cpu.execute(new Opcode(0xCAFF));
+
+        assertEquals(0x34, cpu.readRegister(0xA));
     }
 
     // DXYN

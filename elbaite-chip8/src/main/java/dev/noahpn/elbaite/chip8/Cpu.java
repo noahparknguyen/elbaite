@@ -3,6 +3,8 @@ package dev.noahpn.elbaite.chip8;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.IntSupplier;
 
 /**
  * The CHIP-8 processor: its registers, its call stack, and the fetch-decode-execute cycle
@@ -13,6 +15,10 @@ import java.nio.file.Path;
  * separately. A general register holds one byte, the index register holds sixteen bits,
  * and the program counter holds a twelve-bit address. Nothing about {@code int} enforces
  * any of that.
+ *
+ * <p>It also holds a source of random bytes, used by {@code CXNN}. The source is
+ * injected through the three-argument constructor rather than created inside, so a test
+ * can hand in a predictable stand-in and assert on the result.
  *
  * <p>A new instance has every general register zeroed, the index register at
  * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, and an empty
@@ -40,17 +46,35 @@ public final class Cpu {
 
     private final Memory memory;
     private final Display display;
+    private final IntSupplier randomByte;
 
     /**
-     * Creates a CPU that reads instructions and data from the given memory and draws to
-     * the given display.
+     * Creates a CPU that reads instructions and data from the given memory, draws to the
+     * given display, and takes its random bytes from {@link ThreadLocalRandom}.
      *
      * @param memory  the memory this CPU fetches from, not {@code null}
      * @param display the display this CPU draws to, not {@code null}
      */
     public Cpu(Memory memory, Display display) {
+        this(memory, display, () -> ThreadLocalRandom.current().nextInt(0x100));
+    }
+
+    /**
+     * Creates a CPU that reads instructions and data from the given memory, draws to the
+     * given display, and takes its random bytes from the given source.
+     *
+     * <p>This is the constructor a test uses to make {@code CXNN} predictable. Each call
+     * to {@code randomByte.getAsInt()} must return a value from {@code 0} to {@code 255},
+     * and {@code CXNN} calls it once per instruction.
+     *
+     * @param memory     the memory this CPU fetches from, not {@code null}
+     * @param display    the display this CPU draws to, not {@code null}
+     * @param randomByte the source of random bytes, not {@code null}
+     */
+    public Cpu(Memory memory, Display display, IntSupplier randomByte) {
         this.memory = memory;
         this.display = display;
+        this.randomByte = randomByte;
     }
 
     /**
@@ -238,7 +262,7 @@ public final class Cpu {
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
      * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
      * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, {@code DXYN}, {@code FX1E}, {@code FX29}, {@code FX33},
+     * {@code BNNN}, {@code CXNN}, {@code DXYN}, {@code FX1E}, {@code FX29}, {@code FX33},
      * {@code FX55}, and {@code FX65}. Every other opcode throws: either it is legal
      * CHIP-8 that is not implemented here yet, which is a "not yet" signal rather than a
      * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
@@ -271,6 +295,7 @@ public final class Cpu {
             case 0x9 -> op9XY0(opcode);
             case 0xA -> opANNN(opcode);
             case 0xB -> opBNNN(opcode);
+            case 0xC -> opCXNN(opcode);
             case 0xD -> opDXYN(opcode);
             case 0xF -> dispatchF(opcode);
             default -> throw notImplemented(opcode);
@@ -534,6 +559,12 @@ public final class Cpu {
         int v0 = readRegister(0x0);
 
         setProgramCounter(opcode.nnn() + v0);
+    }
+
+    private void opCXNN(Opcode opcode) {
+        int random = randomByte.getAsInt();
+
+        writeRegister(opcode.x(), random & opcode.nn());
     }
 
     private void opDXYN(Opcode opcode) {
