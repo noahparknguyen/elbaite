@@ -104,6 +104,25 @@ class CpuTest {
         assertThrows(IndexOutOfBoundsException.class, cpu::advanceProgramCounter);
     }
 
+    // --- Timers ---
+
+    @Test
+    void timerValuesRoundTrip() {
+        cpu.setDelayTimer(0xFF);
+        cpu.setSoundTimer(0x00);
+
+        assertEquals(0xFF, cpu.getDelayTimer());
+        assertEquals(0x00, cpu.getSoundTimer());
+    }
+
+    @Test
+    void outOfRangeTimerThrows() {
+        assertThrows(IllegalArgumentException.class, () -> cpu.setDelayTimer(-1));
+        assertThrows(IllegalArgumentException.class, () -> cpu.setDelayTimer(256));
+        assertThrows(IllegalArgumentException.class, () -> cpu.setSoundTimer(-1));
+        assertThrows(IllegalArgumentException.class, () -> cpu.setSoundTimer(256));
+    }
+
     // --- Fetch ---
 
     @Test
@@ -720,6 +739,38 @@ class CpuTest {
         }
     }
 
+    // FX07
+    @Test
+    void readDelayTimerCopiesTimerToVx() {
+        cpu.setDelayTimer(0x2A);
+
+        cpu.execute(new Opcode(0xFA07));
+
+        assertEquals(0x2A, cpu.readRegister(0xA));
+    }
+
+    // FX15
+    @Test
+    void setDelayTimerCopiesVxToTimer() {
+        cpu.writeRegister(0xA, 0x3C);
+        cpu.setDelayTimer(0x10);
+
+        cpu.execute(new Opcode(0xFA15));
+
+        assertEquals(0x3C, cpu.getDelayTimer());
+    }
+
+    // FX18
+    @Test
+    void setSoundTimerCopiesVxToTimer() {
+        cpu.writeRegister(0xA, 0x3C);
+        cpu.setSoundTimer(0x10);
+
+        cpu.execute(new Opcode(0xFA18));
+
+        assertEquals(0x3C, cpu.getSoundTimer());
+    }
+
     // FX1E
     @Test
     void addToIndexStoresSum() {
@@ -888,5 +939,40 @@ class CpuTest {
         assertEquals(0x2A, cpu.readRegister(0x0));
         assertEquals(0x202, cpu.getProgramCounter());
         assertEquals(0x602A, returned.value());
+    }
+
+    // --- Tick ---
+
+    @Test
+    void tickCountsDownBothTimers() {
+        cpu.setDelayTimer(0x05);
+        cpu.setSoundTimer(0x03);
+
+        cpu.tick();
+
+        assertEquals(0x04, cpu.getDelayTimer());
+        assertEquals(0x02, cpu.getSoundTimer());
+    }
+
+    @Test
+    void tickStopsDelayTimerAtZero() {
+        cpu.setDelayTimer(0x00);
+        cpu.setSoundTimer(0x03);
+
+        cpu.tick();
+
+        assertEquals(0x00, cpu.getDelayTimer());
+        assertEquals(0x02, cpu.getSoundTimer());
+    }
+
+    @Test
+    void tickStopsSoundTimerAtZero() {
+        cpu.setDelayTimer(0x03);
+        cpu.setSoundTimer(0x00);
+
+        cpu.tick();
+
+        assertEquals(0x02, cpu.getDelayTimer());
+        assertEquals(0x00, cpu.getSoundTimer());
     }
 }

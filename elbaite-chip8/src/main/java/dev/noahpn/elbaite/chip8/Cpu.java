@@ -7,8 +7,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntSupplier;
 
 /**
- * The CHIP-8 processor: its registers, its call stack, and the fetch-decode-execute cycle
- * that runs instructions.
+ * The CHIP-8 processor: its registers, timers and call stack, and the fetch-decode-execute
+ * cycle that runs instructions.
  *
  * <p>It holds sixteen general registers, the index register, the program counter, and a
  * sixteen-entry call stack. The first three are different widths and each is guarded
@@ -16,13 +16,16 @@ import java.util.function.IntSupplier;
  * and the program counter holds a twelve-bit address. Nothing about {@code int} enforces
  * any of that.
  *
+ * <p>Beside them sit two one-byte countdown timers, the delay timer and the sound timer.
+ * Each falls by one on every {@link #tick()} until it reaches zero, where it stays.
+ *
  * <p>It also holds a source of random bytes, used by {@code CXNN}. The source is
  * injected through the three-argument constructor rather than created inside, so a test
  * can hand in a predictable stand-in and assert on the result.
  *
  * <p>A new instance has every general register zeroed, the index register at
- * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, and an empty
- * stack.
+ * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, both timers at
+ * zero, and an empty stack.
  *
  * <p>Like {@link Memory}, the public setters reject an out-of-range value rather than
  * truncating or wrapping it. Instructions follow the hardware instead: {@code 7XNN} wraps
@@ -35,14 +38,18 @@ public final class Cpu {
     private static final int REGISTER_MAX = 0xFF;
     private static final int INDEX_MAX = 0xFFFF;
     private static final int ADDRESS_MAX = 0xFFF;
+    private static final int TIMER_MAX = 0xFF;
     private static final int STACK_DEPTH = 16;
     private static final int DEFAULT_STEPS = 100;
+    private static final int STEPS_PER_TICK = 10;
 
     private final int[] registers = new int[REGISTER_COUNT];
     private final int[] stack = new int[STACK_DEPTH];
     private int stackPointer;
     private int index;
     private int programCounter = Memory.PROGRAM_START;
+    private int delayTimer;
+    private int soundTimer;
 
     private final Memory memory;
     private final Display display;
@@ -191,13 +198,77 @@ public final class Cpu {
     }
 
     /**
+     * Returns the delay timer.
+     *
+     * <p>A CHIP-8 program reads it with {@code FX07} to measure time: it sets the timer,
+     * then polls it in a loop until it reaches zero. The value falls by one on each
+     * {@link #tick()}, and stops at zero.
+     *
+     * @return the delay timer, {@code 0x00} to {@code 0xFF}
+     */
+    public int getDelayTimer() {
+        return delayTimer;
+    }
+
+    /**
+     * Sets the delay timer.
+     *
+     * <p>Setting a running timer overwrites it; nothing is added to the count already in
+     * progress.
+     *
+     * @param value the value to store, {@code 0x00} to {@code 0xFF}
+     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to
+     *                                  {@code 0xFF}
+     */
+    public void setDelayTimer(int value) {
+        if (value < 0 || value > TIMER_MAX) {
+            throw new IllegalArgumentException(
+                "CHIP-8 delay timer out of range: " + value + " (valid: 0x00-0xFF)");
+        }
+
+        delayTimer = value;
+    }
+
+    /**
+     * Returns the sound timer.
+     *
+     * <p>No instruction reads this timer: it is meant to be heard, not read. A tone will
+     * play for as long as the value is above zero, though no sound is produced yet. The
+     * value falls by one on each {@link #tick()}, and stops at zero.
+     *
+     * @return the sound timer, {@code 0x00} to {@code 0xFF}
+     */
+    public int getSoundTimer() {
+        return soundTimer;
+    }
+
+    /**
+     * Sets the sound timer.
+     *
+     * <p>Setting a running timer overwrites it; nothing is added to the count already in
+     * progress.
+     *
+     * @param value the value to store, {@code 0x00} to {@code 0xFF}
+     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to
+     *                                  {@code 0xFF}
+     */
+    public void setSoundTimer(int value) {
+        if (value < 0 || value > TIMER_MAX) {
+            throw new IllegalArgumentException(
+                "CHIP-8 sound timer out of range: " + value + " (valid: 0x00-0xFF)");
+        }
+
+        soundTimer = value;
+    }
+
+    /**
      * Prints the whole register file to standard output: the sixteen general registers
      * four to a line, then the index register and the program counter on lines of their
-     * own, then the call stack on the last line, oldest entry first, or {@code -} when it
-     * is empty.
+     * own, then the two timers side by side on one line, then the call stack on the last
+     * line, oldest entry first, or {@code -} when it is empty.
      *
-     * <p>Values are hex, two digits for a general register and four for {@code I},
-     * {@code PC} and each stack entry.
+     * <p>Values are hex, two digits for a general register and a timer, and four for
+     * {@code I}, {@code PC} and each stack entry.
      */
     public void dump() {
         StringBuilder sb = new StringBuilder();
@@ -214,6 +285,7 @@ public final class Cpu {
 
         sb.append(String.format("I  %04X%n", index));
         sb.append(String.format("PC %04X%n", programCounter));
+        sb.append(String.format("DT %02X  ST %02X%n", delayTimer, soundTimer));
         sb.append("STACK");
         if (stackPointer == 0) {
             sb.append(" -");
@@ -262,10 +334,11 @@ public final class Cpu {
      * family, and hands off to the matching handler. It currently handles {@code 00E0},
      * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
      * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, {@code CXNN}, {@code DXYN}, {@code FX1E}, {@code FX29}, {@code FX33},
-     * {@code FX55}, and {@code FX65}. Every other opcode throws: either it is legal
-     * CHIP-8 that is not implemented here yet, which is a "not yet" signal rather than a
-     * validation failure, or CHIP-8 does not define it at all, such as {@code 5XY1}.
+     * {@code BNNN}, {@code CXNN}, {@code DXYN}, {@code FX07}, {@code FX15}, {@code FX18},
+     * {@code FX1E}, {@code FX29}, {@code FX33}, {@code FX55}, and {@code FX65}. Every
+     * other opcode throws: either it is legal CHIP-8 that is not implemented here yet,
+     * which is a "not yet" signal rather than a validation failure, or CHIP-8 does not
+     * define it at all, such as {@code 5XY1}.
      *
      * @param opcode the instruction to run
      * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
@@ -332,6 +405,23 @@ public final class Cpu {
         return opcode;
     }
 
+    /**
+     * Advances emulated time by one tick, a sixtieth of a second: each timer above zero
+     * falls by one. A timer already at zero stays at zero; it never wraps.
+     *
+     * <p>This is separate from {@link #step()} because the timers run on the clock, not
+     * on instructions. Whoever owns the clock calls this; {@code step} never does.
+     */
+    public void tick() {
+        if (delayTimer > 0) {
+            delayTimer--;
+        }
+
+        if (soundTimer > 0) {
+            soundTimer--;
+        }
+    }
+
     // The whole 0 family shares its first nibble, so execute cannot tell 00E0 from 00EE.
     // This switches on the full value instead.
     private void dispatch0(Opcode opcode) {
@@ -363,6 +453,9 @@ public final class Cpu {
     // choose the operation. That is what this switches on.
     private void dispatchF(Opcode opcode) {
         switch (opcode.nn()) {
+            case 0x07 -> opFX07(opcode);
+            case 0x15 -> opFX15(opcode);
+            case 0x18 -> opFX18(opcode);
             case 0x1E -> opFX1E(opcode);
             case 0x29 -> opFX29(opcode);
             case 0x33 -> opFX33(opcode);
@@ -602,6 +695,22 @@ public final class Cpu {
         setFlag(collision);
     }
 
+    private void opFX07(Opcode opcode) {
+        writeRegister(opcode.x(), getDelayTimer());
+    }
+
+    private void opFX15(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+
+        setDelayTimer(vx);
+    }
+
+    private void opFX18(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+
+        setSoundTimer(vx);
+    }
+
     private void opFX1E(Opcode opcode) {
         int vx = readRegister(opcode.x());
 
@@ -680,8 +789,11 @@ public final class Cpu {
         Display display = new Display();
         Cpu cpu = new Cpu(memory, display);
 
-        for (int i = 0; i < steps; i++) {
+        for (int i = 1; i <= steps; i++) {
             cpu.step();
+            if (i % STEPS_PER_TICK == 0) {
+                cpu.tick();
+            }
         }
 
         display.dump();
