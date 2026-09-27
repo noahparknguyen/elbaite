@@ -39,6 +39,11 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.6.0</version>
+          <configuration>
+            <!-- Tests paint Swing components into images and never open a window, so they
+                 must not need a display: with DISPLAY set and no X server, AWT throws. -->
+            <argLine>-Djava.awt.headless=true</argLine>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
