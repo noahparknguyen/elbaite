@@ -9,6 +9,7 @@ class EmulatorTest {
 
     private Memory memory;
     private Display display;
+    private Keypad keypad;
     private Cpu cpu;
     private Emulator emulator;
 
@@ -18,7 +19,8 @@ class EmulatorTest {
         memory.loadRom(new byte[]{0x70, 0x01, 0x12, 0x00});
 
         display = new Display();
-        cpu = new Cpu(memory, display);
+        keypad = new Keypad();
+        cpu = new Cpu(memory, display, keypad);
         emulator = new Emulator(cpu);
     }
 

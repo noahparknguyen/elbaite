@@ -16,9 +16,12 @@ import java.util.function.IntSupplier;
  * <p>Beside them sit two one-byte countdown timers, the delay timer and the sound timer.
  * Each falls by one on every {@link #tick()} until it reaches zero, where it stays.
  *
- * <p>It also holds a source of random bytes, used by {@code CXNN}. The source is
- * injected through the three-argument constructor rather than created inside, so a test
- * can hand in a predictable stand-in and assert on the result.
+ * <p>It reads keys from a {@link Keypad}, given to it like the display, for {@code EX9E},
+ * {@code EXA1} and {@code FX0A}.
+ *
+ * <p>It also holds a source of random bytes, used by {@code CXNN}. The source is injected through
+ * the four-argument constructor rather than created inside, so a test can hand in a predictable
+ * stand-in and assert on the result.
  *
  * <p>A new instance has every general register zeroed, the index register at
  * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, both timers at
@@ -37,6 +40,7 @@ public final class Cpu {
     private static final int ADDRESS_MAX = 0xFFF;
     private static final int TIMER_MAX = 0xFF;
     private static final int STACK_DEPTH = 16;
+    private static final int NO_KEY = -1;
 
     private final int[] registers = new int[REGISTER_COUNT];
     private final int[] stack = new int[STACK_DEPTH];
@@ -45,25 +49,29 @@ public final class Cpu {
     private int programCounter = Memory.PROGRAM_START;
     private int delayTimer;
     private int soundTimer;
+    private int keyAwaitingRelease = NO_KEY;
 
     private final Memory memory;
     private final Display display;
+    private final Keypad keypad;
     private final IntSupplier randomByte;
 
     /**
-     * Creates a CPU that reads instructions and data from the given memory, draws to the
-     * given display, and takes its random bytes from {@link ThreadLocalRandom}.
+     * Creates a CPU that reads instructions and data from the given memory, draws to the given
+     * display, reads keys from the given keypad, and takes its random bytes from
+     * {@link ThreadLocalRandom}.
      *
      * @param memory  the memory this CPU fetches from, not {@code null}
      * @param display the display this CPU draws to, not {@code null}
+     * @param keypad  the keypad this CPU reads keys from, not {@code null}
      */
-    public Cpu(Memory memory, Display display) {
-        this(memory, display, () -> ThreadLocalRandom.current().nextInt(0x100));
+    public Cpu(Memory memory, Display display, Keypad keypad) {
+        this(memory, display, keypad, () -> ThreadLocalRandom.current().nextInt(0x100));
     }
 
     /**
-     * Creates a CPU that reads instructions and data from the given memory, draws to the
-     * given display, and takes its random bytes from the given source.
+     * Creates a CPU that reads instructions and data from the given memory, draws to the given
+     * display, reads keys from the given keypad, and takes its random bytes from the given source.
      *
      * <p>This is the constructor a test uses to make {@code CXNN} predictable. Each call
      * to {@code randomByte.getAsInt()} must return a value from {@code 0} to {@code 255},
@@ -71,11 +79,13 @@ public final class Cpu {
      *
      * @param memory     the memory this CPU fetches from, not {@code null}
      * @param display    the display this CPU draws to, not {@code null}
+     * @param keypad     the keypad this CPU reads keys from, not {@code null}
      * @param randomByte the source of random bytes, not {@code null}
      */
-    public Cpu(Memory memory, Display display, IntSupplier randomByte) {
+    public Cpu(Memory memory, Display display, Keypad keypad, IntSupplier randomByte) {
         this.memory = memory;
         this.display = display;
+        this.keypad = keypad;
         this.randomByte = randomByte;
     }
 
@@ -326,14 +336,9 @@ public final class Cpu {
      * Runs one decoded instruction.
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
-     * family, and hands off to the matching handler. It currently handles {@code 00E0},
-     * {@code 00EE}, {@code 1NNN}, {@code 2NNN}, {@code 3XNN}, {@code 4XNN}, {@code 5XY0},
-     * {@code 6XNN}, {@code 7XNN}, the whole {@code 8} family, {@code 9XY0}, {@code ANNN},
-     * {@code BNNN}, {@code CXNN}, {@code DXYN}, {@code FX07}, {@code FX15}, {@code FX18},
-     * {@code FX1E}, {@code FX29}, {@code FX33}, {@code FX55}, and {@code FX65}. Every
-     * other opcode throws: either it is legal CHIP-8 that is not implemented here yet,
-     * which is a "not yet" signal rather than a validation failure, or CHIP-8 does not
-     * define it at all, such as {@code 5XY1}.
+     * family, and hands off to the matching handler. Every CHIP-8 instruction is handled
+     * except {@code 0NNN}, which called native machine code on the VIP and is not
+     * implemented here.
      *
      * @param opcode the instruction to run
      * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
@@ -343,8 +348,8 @@ public final class Cpu {
      *                                       {@code I + 2} past {@code 0xFFF}, or
      *                                       {@code FX55} or {@code FX65} with
      *                                       {@code I + X} past {@code 0xFFF}
-     * @throws UnsupportedOperationException if the opcode has no handler yet, or if it
-     *                                       is not defined by CHIP-8 at all
+     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not
+     *                                       defined by CHIP-8 at all
      * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls
      *                                       already nested, or {@code 00EE} returns with
      *                                       none
@@ -365,6 +370,7 @@ public final class Cpu {
             case 0xB -> opBNNN(opcode);
             case 0xC -> opCXNN(opcode);
             case 0xD -> opDXYN(opcode);
+            case 0xE -> dispatchE(opcode);
             case 0xF -> dispatchF(opcode);
             default -> throw notImplemented(opcode);
         }
@@ -444,11 +450,22 @@ public final class Cpu {
         }
     }
 
+    // In EXNN, X selects the register operand, so the low byte is the field left to
+    // choose the operation. That is what this switches on.
+    private void dispatchE(Opcode opcode) {
+        switch (opcode.nn()) {
+            case 0x9E -> opEX9E(opcode);
+            case 0xA1 -> opEXA1(opcode);
+            default -> throw notImplemented(opcode);
+        }
+    }
+
     // In FXNN, X selects the register operand, so the low byte is the field left to
     // choose the operation. That is what this switches on.
     private void dispatchF(Opcode opcode) {
         switch (opcode.nn()) {
             case 0x07 -> opFX07(opcode);
+            case 0x0A -> opFX0A(opcode);
             case 0x15 -> opFX15(opcode);
             case 0x18 -> opFX18(opcode);
             case 0x1E -> opFX1E(opcode);
@@ -690,8 +707,51 @@ public final class Cpu {
         setFlag(collision);
     }
 
+    private void opEX9E(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+
+        skipIf(keypad.isPressed(vx & 0xF));
+    }
+
+    private void opEXA1(Opcode opcode) {
+        int vx = readRegister(opcode.x());
+
+        skipIf(!keypad.isPressed(vx & 0xF));
+    }
+
     private void opFX07(Opcode opcode) {
         writeRegister(opcode.x(), getDelayTimer());
+    }
+
+    private void opFX0A(Opcode opcode) {
+        if (keyAwaitingRelease == NO_KEY) {
+            int key = NO_KEY;
+
+            // Lowest-numbered held key wins.
+            for (int k = 0; k < 16; k++) {
+                if (keypad.isPressed(k)) {
+                    key = k;
+                    break;
+                }
+            }
+
+            if (key == NO_KEY) {
+                setProgramCounter(getProgramCounter() - 2);
+                return;
+            }
+
+            keyAwaitingRelease = key;
+            setProgramCounter(getProgramCounter() - 2);
+            return;
+        }
+
+        if (keypad.isPressed(keyAwaitingRelease)) {
+            setProgramCounter(getProgramCounter() - 2);
+            return;
+        }
+
+        writeRegister(opcode.x(), keyAwaitingRelease);
+        keyAwaitingRelease = NO_KEY;
     }
 
     private void opFX15(Opcode opcode) {

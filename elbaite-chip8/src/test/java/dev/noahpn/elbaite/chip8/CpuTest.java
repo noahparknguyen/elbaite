@@ -12,13 +12,15 @@ class CpuTest {
 
     private Memory memory;
     private Display display;
+    private Keypad keypad;
     private Cpu cpu;
 
     @BeforeEach
     void setUp() {
         memory = new Memory();
         display = new Display();
-        cpu = new Cpu(memory, display);
+        keypad = new Keypad();
+        cpu = new Cpu(memory, display, keypad);
     }
 
     // --- General registers ---
@@ -611,7 +613,7 @@ class CpuTest {
     void randomAndsWithMask() {
         // Source is always 0xC3, so the only variation is the mask. 0xC3 & 0x0F is 0x03.
         // An OR would give 0xCF, and ignoring the mask would give 0xC3.
-        cpu = new Cpu(memory, display, () -> 0xC3);
+        cpu = new Cpu(memory, display, keypad, () -> 0xC3);
 
         cpu.execute(new Opcode(0xCA0F));
 
@@ -622,7 +624,7 @@ class CpuTest {
     void randomKeepsWholeByteUnderFullMask() {
         // 0xFF keeps every bit, so VX should be the random byte itself. Writing NN
         // instead would leave 0xFF here.
-        cpu = new Cpu(memory, display, () -> 0xC3);
+        cpu = new Cpu(memory, display, keypad, () -> 0xC3);
 
         cpu.execute(new Opcode(0xCAFF));
 
@@ -634,7 +636,7 @@ class CpuTest {
         // Two different values in turn. If Cpu sampled once and reused the number,
         // the second execute would still read 0x12.
         PrimitiveIterator.OfInt it = IntStream.of(0x12, 0x34).iterator();
-        cpu = new Cpu(memory, display, it::nextInt);
+        cpu = new Cpu(memory, display, keypad, it::nextInt);
 
         // First draw.
         cpu.execute(new Opcode(0xCAFF));
@@ -739,6 +741,56 @@ class CpuTest {
         }
     }
 
+    // EX9E
+    @Test
+    void skipIfKeyPressedSkipsWhenHeld() {
+        cpu.writeRegister(0x5, 0x07);
+        keypad.press(0x7);
+
+        cpu.execute(new Opcode(0xE59E));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfKeyPressedDoesNotSkipWhenReleased() {
+        cpu.writeRegister(0x5, 0x07);
+
+        cpu.execute(new Opcode(0xE59E));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfKeyPressedUsesLowNibble() {
+        cpu.writeRegister(0x5, 0x17);
+        keypad.press(0x7);
+
+        cpu.execute(new Opcode(0xE59E));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    // EXA1
+    @Test
+    void skipIfKeyNotPressedSkipsWhenReleased() {
+        cpu.writeRegister(0x5, 0x07);
+
+        cpu.execute(new Opcode(0xE5A1));
+
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void skipIfKeyNotPressedDoesNotSkipWhenHeld() {
+        cpu.writeRegister(0x5, 0x07);
+        keypad.press(0x7);
+
+        cpu.execute(new Opcode(0xE5A1));
+
+        assertEquals(0x200, cpu.getProgramCounter());
+    }
+
     // FX07
     @Test
     void readDelayTimerCopiesTimerToVx() {
@@ -747,6 +799,70 @@ class CpuTest {
         cpu.execute(new Opcode(0xFA07));
 
         assertEquals(0x2A, cpu.readRegister(0xA));
+    }
+
+    // FX0A
+    @Test
+    void waitForKeyRepeatsWithNoKeyPressed() {
+        memory.loadRom(new byte[]{(byte) 0xF5, 0x0A});
+
+        cpu.step();
+
+        assertEquals(0x200, cpu.getProgramCounter());
+        assertEquals(0x00, cpu.readRegister(0x5));
+    }
+
+    @Test
+    void waitForKeyRepeatsWhileKeyHeld() {
+        memory.loadRom(new byte[]{(byte) 0xF5, 0x0A});
+        keypad.press(0x7);
+
+        // The press alone does not finish it.
+        cpu.step();
+
+        assertEquals(0x200, cpu.getProgramCounter());
+        assertEquals(0x00, cpu.readRegister(0x5));
+
+        // Nor does holding the key through another step.
+        cpu.step();
+
+        assertEquals(0x200, cpu.getProgramCounter());
+        assertEquals(0x00, cpu.readRegister(0x5));
+    }
+
+    @Test
+    void waitForKeyStoresKeyOnRelease() {
+        memory.loadRom(new byte[]{(byte) 0xF5, 0x0A});
+        keypad.press(0x7);
+
+        cpu.step();
+
+        keypad.release(0x7);
+        cpu.step();
+
+        assertEquals(0x07, cpu.readRegister(0x5));
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void waitForKeyForgetsPreviousKey() {
+        memory.loadRom(new byte[]{(byte) 0xF5, 0x0A, (byte) 0xF6, 0x0A});
+        keypad.press(0x7);
+
+        cpu.step();
+
+        // The first FX0A finishes on the release.
+        keypad.release(0x7);
+        cpu.step();
+
+        assertEquals(0x07, cpu.readRegister(0x5));
+        assertEquals(0x202, cpu.getProgramCounter());
+
+        // Second FX0A must not inherit the first one's remembered key.
+        cpu.step();
+
+        assertEquals(0x00, cpu.readRegister(0x6));
+        assertEquals(0x202, cpu.getProgramCounter());
     }
 
     // FX15
@@ -916,14 +1032,14 @@ class CpuTest {
     void unimplementedOpcodeThrows() {
         // 00EF reaches dispatch0's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x00EF)));
-        // E000 reaches execute's default
-        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xE000)));
         // 8009 reaches dispatch8's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x8009)));
         // 5AB1 reaches op5XY0's nibble check
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x5AB1)));
         // 9AB1 reaches op9XY0's nibble check
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0x9AB1)));
+        // E000 reaches dispatchE's default
+        assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xE000)));
         // F0FF reaches dispatchF's default
         assertThrows(UnsupportedOperationException.class, () -> cpu.execute(new Opcode(0xF0FF)));
     }

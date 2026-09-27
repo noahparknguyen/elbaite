@@ -1,6 +1,8 @@
 package dev.noahpn.elbaite.chip8;
 
 import javax.swing.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -10,8 +12,9 @@ import java.nio.file.Path;
  * steps or live in a window titled Achroite.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
- * driven by a Swing timer. A frame is ten steps and a tick.
+ * terminal. Without one, it opens the window and runs in real time, sixty frames a second, driven
+ * by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap}. A frame is ten
+ * steps and a tick.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
@@ -84,17 +87,36 @@ public final class Emulator {
         return toRun;
     }
 
-    private static void openWindow(Display display, Emulator emulator) {
+    private static void openWindow(Display display, Keypad keypad, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         DisplayPanel panel = new DisplayPanel(display);
         frame.add(panel);
         frame.setResizable(false);
         frame.pack();
+
+        frame.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent event) {
+                int key = KeyMap.keypadKey(event.getKeyCode());
+                if (key != -1) {
+                    keypad.press(key);
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent event) {
+                int key = KeyMap.keypadKey(event.getKeyCode());
+                if (key != -1) {
+                    keypad.release(key);
+                }
+            }
+        });
+
         frame.setVisible(true);
 
         long start = System.nanoTime();
-        Timer timer = new Timer(TIMER_DELAY_MS, event -> {
+        Timer timer = new Timer(TIMER_DELAY_MS, _ -> {
             if (emulator.catchUp(System.nanoTime() - start) > 0) {
                 panel.repaint();
             }
@@ -136,11 +158,12 @@ public final class Emulator {
         }
 
         Display display = new Display();
-        Cpu cpu = new Cpu(memory, display);
+        Keypad keypad = new Keypad();
+        Cpu cpu = new Cpu(memory, display, keypad);
         Emulator emulator = new Emulator(cpu);
 
         if (args.length == 1) {
-            SwingUtilities.invokeLater(() -> openWindow(display, emulator));
+            SwingUtilities.invokeLater(() -> openWindow(display, keypad, emulator));
         } else {
             emulator.runSteps(steps);
             display.dump();
