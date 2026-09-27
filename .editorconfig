@@ -14,8 +14,9 @@ max_line_length = 100
 # here) keeps those breaks through a reformat, provided the IDE option "Reformat again to
 # remove custom line breaks" stays off. wrap_on_typing is off because, when typing runs
 # past the margin inside a string literal, it splits the literal into a concatenation.
+# It has no ij_java_ form: IntelliJ only reads the general ij_wrap_on_typing.
 ij_java_keep_line_breaks = true
-ij_java_wrap_on_typing = false
+ij_wrap_on_typing = false
 
 [*.xml]
 indent_style = space
