@@ -1,8 +1,5 @@
 package dev.noahpn.elbaite.chip8;
 
-import java.io.IOException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntSupplier;
 
@@ -40,8 +37,6 @@ public final class Cpu {
     private static final int ADDRESS_MAX = 0xFFF;
     private static final int TIMER_MAX = 0xFF;
     private static final int STACK_DEPTH = 16;
-    private static final int DEFAULT_STEPS = 100;
-    private static final int STEPS_PER_TICK = 10;
 
     private final int[] registers = new int[REGISTER_COUNT];
     private final int[] stack = new int[STACK_DEPTH];
@@ -753,51 +748,5 @@ public final class Cpu {
         }
 
         setIndexRegister(start + opcode.x() + 1);
-    }
-
-    static void main(String[] args) {
-        if (args.length < 1 || args.length > 2) {
-            IO.println("Usage: Cpu <rom-path> [steps]");
-            return;
-        }
-
-        int steps = DEFAULT_STEPS;
-        if (args.length == 2) {
-            try {
-                steps = Integer.parseInt(args[1]);
-            } catch (NumberFormatException e) {
-                IO.println("Usage: Cpu <rom-path> [steps]");
-                return;
-            }
-            if (steps < 1) {
-                IO.println("Usage: Cpu <rom-path> [steps]");
-                return;
-            }
-        }
-
-        Memory memory = new Memory();
-        try {
-            memory.loadRom(Path.of(args[0]));
-        } catch (NoSuchFileException e) {
-            IO.println("ROM not found: " + args[0]);
-            return;
-        } catch (IOException e) {
-            IO.println("Could not read ROM '" + args[0] + "': " + e.getMessage());
-            return;
-        }
-
-        Display display = new Display();
-        Cpu cpu = new Cpu(memory, display);
-
-        for (int i = 1; i <= steps; i++) {
-            cpu.step();
-            if (i % STEPS_PER_TICK == 0) {
-                cpu.tick();
-            }
-        }
-
-        display.dump();
-        IO.println();
-        cpu.dump();
     }
 }
