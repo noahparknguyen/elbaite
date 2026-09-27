@@ -7,19 +7,24 @@ import java.nio.file.Path;
 
 /**
  * The emulator program: it loads a ROM and runs it, either in the terminal for a given number of
- * steps or in a window titled Achroite.
+ * steps or live in a window titled Achroite.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it runs 1000 steps and shows the result in the window, as a still picture.
+ * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
+ * driven by a Swing timer. A frame is ten steps and a tick.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
 public final class Emulator {
 
-    private static final int STEPS = 1000;
     private static final int STEPS_PER_FRAME = 10;
+    private static final int FRAMES_PER_SECOND = 60;
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
+    private static final int CATCH_UP_LIMIT = 5;
+    private static final int TIMER_DELAY_MS = 16;
 
     private final Cpu cpu;
+    private long framesRun;
 
     /**
      * Creates an emulator that drives the given CPU.
@@ -45,13 +50,56 @@ public final class Emulator {
         }
     }
 
-    private static void openWindow(Display display) {
+    /**
+     * Returns how many whole frames fit in the given elapsed time at 60 frames a second,
+     * rounding down.
+     *
+     * @param elapsedNanos nanoseconds since the loop started
+     * @return the number of whole frames due
+     */
+    public static long framesDue(long elapsedNanos) {
+        return Math.floorDiv(elapsedNanos * FRAMES_PER_SECOND, NANOS_PER_SECOND);
+    }
+
+    /**
+     * Runs the frames that are due and have not run yet, at most five.
+     *
+     * <p>Frames beyond the limit are skipped rather than saved: they count as done and never
+     * run. {@code elapsedNanos} counts from the loop's start and never goes down between
+     * calls.
+     *
+     * @param elapsedNanos nanoseconds since the loop started
+     * @return how many frames were run
+     */
+    public int catchUp(long elapsedNanos) {
+        long due = framesDue(elapsedNanos);
+        long behind = due - framesRun;
+        int toRun = (int) Math.min(behind, CATCH_UP_LIMIT);
+
+        for (int frame = 0; frame < toRun; frame++) {
+            runSteps(STEPS_PER_FRAME);
+        }
+
+        framesRun = due;
+        return toRun;
+    }
+
+    private static void openWindow(Display display, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.add(new DisplayPanel(display));
+        DisplayPanel panel = new DisplayPanel(display);
+        frame.add(panel);
         frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
+
+        long start = System.nanoTime();
+        Timer timer = new Timer(TIMER_DELAY_MS, event -> {
+            if (emulator.catchUp(System.nanoTime() - start) > 0) {
+                panel.repaint();
+            }
+        });
+        timer.start();
     }
 
     static void main(String[] args) {
@@ -60,7 +108,7 @@ public final class Emulator {
             return;
         }
 
-        int steps = STEPS;
+        int steps = 0;
 
         if (args.length == 2) {
             try {
@@ -91,11 +139,10 @@ public final class Emulator {
         Cpu cpu = new Cpu(memory, display);
         Emulator emulator = new Emulator(cpu);
 
-        emulator.runSteps(steps);
-
         if (args.length == 1) {
-            SwingUtilities.invokeLater(() -> openWindow(display));
+            SwingUtilities.invokeLater(() -> openWindow(display, emulator));
         } else {
+            emulator.runSteps(steps);
             display.dump();
             IO.println();
             cpu.dump();
