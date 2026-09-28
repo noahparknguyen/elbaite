@@ -14,7 +14,7 @@ import java.nio.file.Path;
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
  * terminal. Without one, it opens the window and runs in real time, sixty frames a second, driven
  * by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap}. A frame is ten
- * steps and a tick.
+ * steps and a tick, and a draw ends its frame.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
@@ -42,13 +42,25 @@ public final class Emulator {
      * Runs the given number of steps, ticking the timers after every tenth step of this run:
      * after steps 10, 20, 30 and so on.
      *
+     * <p>After a step that runs a {@code DXYN}, the rest of the frame passes without running
+     * instructions: later steps up to the frame's tick do nothing. The tick itself still
+     * happens, on its usual step, and the step after it runs normally again. The wait never
+     * outlives this call.
+     *
      * @param steps the number of steps to run
      */
     public void runSteps(int steps) {
+        boolean waiting = false;
         for (int step = 1; step <= steps; step++) {
-            cpu.step();
+            if (!waiting) {
+                Opcode opcode = cpu.step();
+                if (opcode.high() == 0xD) {
+                    waiting = true;
+                }
+            }
             if (step % STEPS_PER_FRAME == 0) {
                 cpu.tick();
+                waiting = false;
             }
         }
     }

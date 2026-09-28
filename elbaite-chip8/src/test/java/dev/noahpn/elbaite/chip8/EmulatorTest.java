@@ -73,4 +73,29 @@ class EmulatorTest {
         // One frame later: the skipped fifty-five are gone, so only the new one runs.
         assertEquals(1, emulator.catchUp(1_016_666_667L));
     }
+
+    @Test
+    void runStepsWaitsOutFrameAfterDraw() {
+        memory.loadRom(new byte[]{0x70, 0x01, (byte) 0xD0, 0x01, 0x12, 0x00});
+
+        emulator.runSteps(10);
+
+        assertEquals(0x01, cpu.readRegister(0x0), "only the step before the draw should have run");
+        assertEquals(0x204, cpu.getProgramCounter(), "PC should be stalled just after the DXYN");
+    }
+
+    @Test
+    void runStepsResumesAfterTick() {
+        memory.loadRom(new byte[]{0x70, 0x01, (byte) 0xD0, 0x01, 0x12, 0x00});
+        cpu.setDelayTimer(0xFF);
+
+        emulator.runSteps(20);
+
+        assertEquals(0x02, cpu.readRegister(0x0),
+            "a second add and draw should have run after the tick");
+        assertEquals(0x204, cpu.getProgramCounter(),
+            "PC should again be stalled just after the second DXYN");
+        assertEquals(0xFD, cpu.getDelayTimer(),
+            "both ticks should have counted the delay timer down");
+    }
 }
