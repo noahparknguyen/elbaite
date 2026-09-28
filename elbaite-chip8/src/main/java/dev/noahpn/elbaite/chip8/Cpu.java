@@ -20,8 +20,11 @@ import java.util.function.IntSupplier;
  * {@code EXA1} and {@code FX0A}.
  *
  * <p>It also holds a source of random bytes, used by {@code CXNN}. The source is injected through
- * the four-argument constructor rather than created inside, so a test can hand in a predictable
+ * the five-argument constructor rather than created inside, so a test can hand in a predictable
  * stand-in and assert on the result.
+ *
+ * <p>The behaviours where interpreters disagree come from the {@link Quirks} it is built
+ * with. It reads five of the six; the sixth, display wait, belongs to the {@link Emulator}.
  *
  * <p>A new instance has every general register zeroed, the index register at
  * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, both timers at
@@ -54,24 +57,37 @@ public final class Cpu {
     private final Memory memory;
     private final Display display;
     private final Keypad keypad;
+    private final Quirks quirks;
     private final IntSupplier randomByte;
 
     /**
      * Creates a CPU that reads instructions and data from the given memory, draws to the given
-     * display, reads keys from the given keypad, and takes its random bytes from
-     * {@link ThreadLocalRandom}.
+     * display, reads keys from the given keypad, uses the {@link Quirks#VIP} preset, and takes
+     * its random bytes from {@link ThreadLocalRandom}.
      *
      * @param memory  the memory this CPU fetches from, not {@code null}
      * @param display the display this CPU draws to, not {@code null}
      * @param keypad  the keypad this CPU reads keys from, not {@code null}
      */
     public Cpu(Memory memory, Display display, Keypad keypad) {
-        this(memory, display, keypad, () -> ThreadLocalRandom.current().nextInt(0x100));
+        this(memory, display, keypad, Quirks.VIP);
     }
 
     /**
-     * Creates a CPU that reads instructions and data from the given memory, draws to the given
-     * display, reads keys from the given keypad, and takes its random bytes from the given source.
+     * Creates a CPU with the given quirks, taking its random bytes from
+     * {@link ThreadLocalRandom}.
+     *
+     * @param memory  the memory this CPU fetches from, not {@code null}
+     * @param display the display this CPU draws to, not {@code null}
+     * @param keypad  the keypad this CPU reads keys from, not {@code null}
+     * @param quirks  the behaviours to use where interpreters differ, not {@code null}
+     */
+    public Cpu(Memory memory, Display display, Keypad keypad, Quirks quirks) {
+        this(memory, display, keypad, quirks, () -> ThreadLocalRandom.current().nextInt(0x100));
+    }
+
+    /**
+     * Creates a CPU with the given quirks and the given source of random bytes.
      *
      * <p>This is the constructor a test uses to make {@code CXNN} predictable. Each call
      * to {@code randomByte.getAsInt()} must return a value from {@code 0} to {@code 255},
@@ -80,12 +96,15 @@ public final class Cpu {
      * @param memory     the memory this CPU fetches from, not {@code null}
      * @param display    the display this CPU draws to, not {@code null}
      * @param keypad     the keypad this CPU reads keys from, not {@code null}
+     * @param quirks     the behaviours to use where interpreters differ, not {@code null}
      * @param randomByte the source of random bytes, not {@code null}
      */
-    public Cpu(Memory memory, Display display, Keypad keypad, IntSupplier randomByte) {
+    public Cpu(Memory memory, Display display, Keypad keypad, Quirks quirks,
+               IntSupplier randomByte) {
         this.memory = memory;
         this.display = display;
         this.keypad = keypad;
+        this.quirks = quirks;
         this.randomByte = randomByte;
     }
 
@@ -573,7 +592,9 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx | vy);
-        setFlag(false);
+        if (quirks.vfReset()) {
+            setFlag(false);
+        }
     }
 
     private void op8XY2(Opcode opcode) {
@@ -581,7 +602,9 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx & vy);
-        setFlag(false);
+        if (quirks.vfReset()) {
+            setFlag(false);
+        }
     }
 
     private void op8XY3(Opcode opcode) {
@@ -589,7 +612,9 @@ public final class Cpu {
         int vy = readRegister(opcode.y());
 
         writeRegister(opcode.x(), vx ^ vy);
-        setFlag(false);
+        if (quirks.vfReset()) {
+            setFlag(false);
+        }
     }
 
     private void op8XY4(Opcode opcode) {
@@ -615,13 +640,13 @@ public final class Cpu {
     }
 
     private void op8XY6(Opcode opcode) {
-        int vy = readRegister(opcode.y());
+        int value = quirks.shifting() ? readRegister(opcode.x()) : readRegister(opcode.y());
 
-        int result = vy >>> 1;
+        int result = value >>> 1;
 
         writeRegister(opcode.x(), result & 0xFF);
 
-        setFlag((vy & 1) != 0);
+        setFlag((value & 1) != 0);
     }
 
     private void op8XY7(Opcode opcode) {
@@ -636,13 +661,13 @@ public final class Cpu {
     }
 
     private void op8XYE(Opcode opcode) {
-        int vy = readRegister(opcode.y());
+        int value = quirks.shifting() ? readRegister(opcode.x()) : readRegister(opcode.y());
 
-        int result = vy << 1;
+        int result = value << 1;
 
         writeRegister(opcode.x(), result & 0xFF);
 
-        setFlag(((vy >>> 7) & 1) != 0);
+        setFlag(((value >>> 7) & 1) != 0);
     }
 
     private void op9XY0(Opcode opcode) {
@@ -661,9 +686,9 @@ public final class Cpu {
     }
 
     private void opBNNN(Opcode opcode) {
-        int v0 = readRegister(0x0);
+        int offset = quirks.jumping() ? readRegister(opcode.x()) : readRegister(0x0);
 
-        setProgramCounter(opcode.nnn() + v0);
+        setProgramCounter(opcode.nnn() + offset);
     }
 
     private void opCXNN(Opcode opcode) {
@@ -693,9 +718,13 @@ public final class Cpu {
                 int px = startX + col;
                 int py = startY + row;
 
-                // Clip, do not wrap.
-                if (px >= 64 || py >= 32) {
-                    continue;
+                if (quirks.clipping()) {
+                    if (px >= 64 || py >= 32) {
+                        continue;
+                    }
+                } else {
+                    px %= 64;
+                    py %= 32;
                 }
 
                 if (display.flipPixel(px, py)) {
@@ -797,7 +826,9 @@ public final class Cpu {
             memory.write(start + i, value);
         }
 
-        setIndexRegister(start + opcode.x() + 1);
+        if (quirks.memory()) {
+            setIndexRegister(start + opcode.x() + 1);
+        }
     }
 
     private void opFX65(Opcode opcode) {
@@ -807,6 +838,8 @@ public final class Cpu {
             writeRegister(i, value);
         }
 
-        setIndexRegister(start + opcode.x() + 1);
+        if (quirks.memory()) {
+            setIndexRegister(start + opcode.x() + 1);
+        }
     }
 }

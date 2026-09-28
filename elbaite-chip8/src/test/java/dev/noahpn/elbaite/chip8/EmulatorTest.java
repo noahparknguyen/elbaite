@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class EmulatorTest {
 
     private Memory memory;
-    private Display display;
-    private Keypad keypad;
     private Cpu cpu;
     private Emulator emulator;
 
@@ -18,8 +16,8 @@ class EmulatorTest {
         memory = new Memory();
         memory.loadRom(new byte[]{0x70, 0x01, 0x12, 0x00});
 
-        display = new Display();
-        keypad = new Keypad();
+        Display display = new Display();
+        Keypad keypad = new Keypad();
         cpu = new Cpu(memory, display, keypad);
         emulator = new Emulator(cpu);
     }
@@ -97,5 +95,21 @@ class EmulatorTest {
             "PC should again be stalled just after the second DXYN");
         assertEquals(0xFD, cpu.getDelayTimer(),
             "both ticks should have counted the delay timer down");
+    }
+
+    @Test
+    void runStepsRunsThroughDrawWithoutDisplayWaitQuirk() {
+        // The same draw ROM as the two tests above, but under OCTO: no display wait,
+        // so every step runs an instruction. In ten steps the loop gets through add,
+        // draw, jump three times and a fourth add.
+        memory.loadRom(new byte[]{0x70, 0x01, (byte) 0xD0, 0x01, 0x12, 0x00});
+        emulator = new Emulator(cpu, Quirks.OCTO);
+
+        emulator.runSteps(10);
+
+        assertEquals(0x04, cpu.readRegister(0x0),
+            "with no wait, all four adds should have run");
+        assertEquals(0x202, cpu.getProgramCounter(),
+            "PC should have advanced through add, draw and jump each time");
     }
 }

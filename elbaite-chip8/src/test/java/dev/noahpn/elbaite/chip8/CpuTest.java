@@ -389,6 +389,29 @@ class CpuTest {
         assertEquals(0, cpu.readRegister(0xF));
     }
 
+    @Test
+    void logicOperationsKeepFlagWithoutVfResetQuirk() {
+        // Same shape as logicOperationsResetFlag, but with a sentinel in VF and the
+        // OCTO preset. Off means untouched, not zero: a handler that still calls
+        // setFlag(false) leaves 0x00 here, not 0x42.
+        cpu = new Cpu(memory, display, keypad, Quirks.OCTO);
+
+        cpu.writeRegister(0x0, 0xF0);
+        cpu.writeRegister(0x1, 0x3C);
+
+        cpu.writeRegister(0xF, 0x42);
+        cpu.execute(new Opcode(0x8011));
+        assertEquals(0x42, cpu.readRegister(0xF), "8XY1 should leave VF alone");
+
+        cpu.writeRegister(0xF, 0x42);
+        cpu.execute(new Opcode(0x8012));
+        assertEquals(0x42, cpu.readRegister(0xF), "8XY2 should leave VF alone");
+
+        cpu.writeRegister(0xF, 0x42);
+        cpu.execute(new Opcode(0x8013));
+        assertEquals(0x42, cpu.readRegister(0xF), "8XY3 should leave VF alone");
+    }
+
     // 8XY4
     @Test
     void addRegistersStoresSum() {
@@ -491,6 +514,21 @@ class CpuTest {
         assertEquals(0, cpu.readRegister(0xF));
     }
 
+    @Test
+    void shiftRightShiftsVxWithShiftingQuirk() {
+        // Two different registers on purpose: with V0 == V1 the VIP and SUPER-CHIP
+        // behaviours agree, and the test would prove nothing. 0x03 >>> 1 is 0x01, not
+        // VY's 0xAA >>> 1 = 0x55. The flag comes from bit 0 of VX (1), not of VY (0).
+        cpu = new Cpu(memory, display, keypad, Quirks.SUPER_CHIP);
+        cpu.writeRegister(0x0, 0x03);
+        cpu.writeRegister(0x1, 0xAA);
+
+        cpu.execute(new Opcode(0x8016));
+
+        assertEquals(0x01, cpu.readRegister(0x0));
+        assertEquals(0x01, cpu.readRegister(0xF));
+    }
+
     // 8XY7
     @Test
     void subtractVxFromVyStoresDifference() {
@@ -559,6 +597,20 @@ class CpuTest {
         assertEquals(0, cpu.readRegister(0xF));
     }
 
+    @Test
+    void shiftLeftShiftsVxWithShiftingQuirk() {
+        // 0x81 << 1 is 0x102, low byte 0x02, not VY's 0x03 << 1 = 0x06. Flag from bit 7
+        // of VX (1), not of VY (0).
+        cpu = new Cpu(memory, display, keypad, Quirks.SUPER_CHIP);
+        cpu.writeRegister(0x0, 0x81);
+        cpu.writeRegister(0x1, 0x03);
+
+        cpu.execute(new Opcode(0x801E));
+
+        assertEquals(0x02, cpu.readRegister(0x0));
+        assertEquals(0x01, cpu.readRegister(0xF));
+    }
+
     // 9XY0
     @Test
     void skipIfRegistersNotEqualSkipsOnMismatch() {
@@ -602,6 +654,19 @@ class CpuTest {
     }
 
     @Test
+    void jumpWithOffsetAddsVxWithJumpingQuirk() {
+        // B300: the second nibble is 3, so BXNN adds V3 = 0x10 to 0x300, giving 0x310.
+        // The VIP half, jumpWithOffsetAddsV0, adds V0 = 0x04 for 0x304.
+        cpu = new Cpu(memory, display, keypad, Quirks.SUPER_CHIP);
+        cpu.writeRegister(0x0, 0x04);
+        cpu.writeRegister(0x3, 0x10);
+
+        cpu.execute(new Opcode(0xB300));
+
+        assertEquals(0x310, cpu.getProgramCounter());
+    }
+
+    @Test
     void jumpWithOffsetPastMemoryThrows() {
         cpu.writeRegister(0x0, 0x01);
 
@@ -613,7 +678,7 @@ class CpuTest {
     void randomAndsWithMask() {
         // Source is always 0xC3, so the only variation is the mask. 0xC3 & 0x0F is 0x03.
         // An OR would give 0xCF, and ignoring the mask would give 0xC3.
-        cpu = new Cpu(memory, display, keypad, () -> 0xC3);
+        cpu = new Cpu(memory, display, keypad, Quirks.VIP, () -> 0xC3);
 
         cpu.execute(new Opcode(0xCA0F));
 
@@ -624,7 +689,7 @@ class CpuTest {
     void randomKeepsWholeByteUnderFullMask() {
         // 0xFF keeps every bit, so VX should be the random byte itself. Writing NN
         // instead would leave 0xFF here.
-        cpu = new Cpu(memory, display, keypad, () -> 0xC3);
+        cpu = new Cpu(memory, display, keypad, Quirks.VIP, () -> 0xC3);
 
         cpu.execute(new Opcode(0xCAFF));
 
@@ -636,7 +701,7 @@ class CpuTest {
         // Two different values in turn. If Cpu sampled once and reused the number,
         // the second execute would still read 0x12.
         PrimitiveIterator.OfInt it = IntStream.of(0x12, 0x34).iterator();
-        cpu = new Cpu(memory, display, keypad, it::nextInt);
+        cpu = new Cpu(memory, display, keypad, Quirks.VIP, it::nextInt);
 
         // First draw.
         cpu.execute(new Opcode(0xCAFF));
@@ -739,6 +804,35 @@ class CpuTest {
         for (int x = 0; x < 64; x++) {
             assertFalse(display.getPixel(x, 0), "row 0 is where a wrap would land");
         }
+    }
+
+    @Test
+    void drawSpriteWrapsAtEdgesWithoutClippingQuirk() {
+        // The same setup as drawSpriteClipsAtEdges, which is the VIP half of this pair.
+        // Columns 64-67 land on 0-3, and row 32 lands on row 0. Column 4 stays dark unless
+        // the wrap lands one column too far (64 on 1); row 1 stays dark unless it lands
+        // one row too far (32 on 1).
+        cpu = new Cpu(memory, display, keypad, Quirks.OCTO);
+
+        memory.write(0x300, 0xFF);
+        memory.write(0x301, 0xFF);
+        memory.write(0x302, 0xFF);
+        cpu.setIndexRegister(0x300);
+        cpu.writeRegister(0x0, 60);
+        cpu.writeRegister(0x1, 30);
+
+        cpu.execute(new Opcode(0xD013));
+
+        for (int row : new int[]{30, 31, 0}) {
+            for (int col : new int[]{60, 61, 62, 63, 0, 1, 2, 3}) {
+                assertTrue(display.getPixel(col, row),
+                    "column " + col + " on row " + row + " should be lit");
+            }
+            assertFalse(display.getPixel(4, row),
+                "column 4 on row " + row + " is where a wrap one column too far would land");
+        }
+        assertFalse(display.getPixel(60, 1), "row 1 is where a wrap one row too far would land");
+        assertFalse(display.getPixel(0, 1), "row 1 is where a wrap one row too far would land");
     }
 
     // EX9E
@@ -1001,6 +1095,18 @@ class CpuTest {
         assertEquals(0x303, cpu.getIndexRegister());
     }
 
+    @Test
+    void storeRegistersLeavesIndexWithoutMemoryQuirk() {
+        // FX55 under SUPER-CHIP: the registers and memory are written as usual, but the
+        // index register stays where it was. storeRegistersAdvancesIndex is the VIP half.
+        cpu = new Cpu(memory, display, keypad, Quirks.SUPER_CHIP);
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xF255));
+
+        assertEquals(0x300, cpu.getIndexRegister());
+    }
+
     // FX65
     @Test
     void loadRegistersReadsV0ThroughVx() {
@@ -1025,6 +1131,18 @@ class CpuTest {
         cpu.execute(new Opcode(0xF265));
 
         assertEquals(0x303, cpu.getIndexRegister());
+    }
+
+    @Test
+    void loadRegistersLeavesIndexWithoutMemoryQuirk() {
+        // FX65 under SUPER-CHIP. Both handlers are tested because the quirks test shows
+        // ERR1 when storing and loading disagree.
+        cpu = new Cpu(memory, display, keypad, Quirks.SUPER_CHIP);
+        cpu.setIndexRegister(0x300);
+
+        cpu.execute(new Opcode(0xF265));
+
+        assertEquals(0x300, cpu.getIndexRegister());
     }
 
     // No handler

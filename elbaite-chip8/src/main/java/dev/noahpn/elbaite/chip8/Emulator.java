@@ -11,10 +11,15 @@ import java.nio.file.Path;
  * The emulator program: it loads a ROM and runs it, either in the terminal for a given number of
  * steps or live in a window titled Achroite.
  *
+ * <p>The command line is {@code Emulator [--quirks vip|schip|octo] <rom-path> [steps]}. The
+ * optional {@code --quirks} must come first and picks a preset from {@link Quirks#forName};
+ * without it, {@link Quirks#VIP}. The same preset goes to both the {@link Cpu} and the
+ * emulator.
+ *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
  * terminal. Without one, it opens the window and runs in real time, sixty frames a second, driven
  * by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap}. A frame is ten
- * steps and a tick, and a draw ends its frame.
+ * steps and a tick, and with display wait on, a draw ends its frame.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
@@ -26,26 +31,42 @@ public final class Emulator {
     private static final int CATCH_UP_LIMIT = 5;
     private static final int TIMER_DELAY_MS = 16;
 
+    private static final String USAGE =
+        "Usage: Emulator [--quirks vip|schip|octo] <rom-path> [steps]";
+
     private final Cpu cpu;
+    private final Quirks quirks;
     private long framesRun;
 
     /**
-     * Creates an emulator that drives the given CPU.
+     * Creates an emulator that drives the given CPU with the {@link Quirks#VIP} preset.
      *
      * @param cpu the processor to step and tick, not {@code null}
      */
     public Emulator(Cpu cpu) {
+        this(cpu, Quirks.VIP);
+    }
+
+    /**
+     * Creates an emulator that drives the given CPU with the given quirks. Only
+     * {@link Quirks#displayWait()} is read here; the rest belong to the {@link Cpu}.
+     *
+     * @param cpu    the processor to step and tick, not {@code null}
+     * @param quirks the behaviours to use where interpreters differ, not {@code null}
+     */
+    public Emulator(Cpu cpu, Quirks quirks) {
         this.cpu = cpu;
+        this.quirks = quirks;
     }
 
     /**
      * Runs the given number of steps, ticking the timers after every tenth step of this run:
      * after steps 10, 20, 30 and so on.
      *
-     * <p>After a step that runs a {@code DXYN}, the rest of the frame passes without running
-     * instructions: later steps up to the frame's tick do nothing. The tick itself still
-     * happens, on its usual step, and the step after it runs normally again. The wait never
-     * outlives this call.
+     * <p>When the quirks have display wait on, the rest of the frame after a step that runs a
+     * {@code DXYN} passes without running instructions: later steps up to the frame's tick
+     * do nothing. The tick itself still happens, on its usual step, and the step after it
+     * runs normally again. The wait never outlives this call.
      *
      * @param steps the number of steps to run
      */
@@ -54,7 +75,7 @@ public final class Emulator {
         for (int step = 1; step <= steps; step++) {
             if (!waiting) {
                 Opcode opcode = cpu.step();
-                if (opcode.high() == 0xD) {
+                if (quirks.displayWait() && opcode.high() == 0xD) {
                     waiting = true;
                 }
             }
@@ -137,22 +158,42 @@ public final class Emulator {
     }
 
     static void main(String[] args) {
-        if (args.length < 1 || args.length > 2) {
-            IO.println("Usage: Emulator <rom-path> [steps]");
+        Quirks quirks = Quirks.VIP;
+        int next = 0;
+
+        if (next < args.length && args[next].equals("--quirks")) {
+            next++;
+            if (next >= args.length) {
+                IO.println(USAGE);
+                return;
+            }
+            try {
+                quirks = Quirks.forName(args[next]);
+            } catch (IllegalArgumentException e) {
+                IO.println(USAGE);
+                return;
+            }
+            next++;
+        }
+
+        int remaining = args.length - next;
+        if (remaining < 1 || remaining > 2) {
+            IO.println(USAGE);
             return;
         }
 
+        String romPath = args[next];
         int steps = 0;
 
-        if (args.length == 2) {
+        if (remaining == 2) {
             try {
-                steps = Integer.parseInt(args[1]);
+                steps = Integer.parseInt(args[next + 1]);
             } catch (NumberFormatException e) {
-                IO.println("Usage: Emulator <rom-path> [steps]");
+                IO.println(USAGE);
                 return;
             }
             if (steps < 1) {
-                IO.println("Usage: Emulator <rom-path> [steps]");
+                IO.println(USAGE);
                 return;
             }
         }
@@ -160,21 +201,21 @@ public final class Emulator {
         Memory memory = new Memory();
 
         try {
-            memory.loadRom(Path.of(args[0]));
+            memory.loadRom(Path.of(romPath));
         } catch (NoSuchFileException e) {
-            IO.println("ROM not found: " + args[0]);
+            IO.println("ROM not found: " + romPath);
             return;
         } catch (IOException e) {
-            IO.println("Could not read ROM '" + args[0] + "': " + e.getMessage());
+            IO.println("Could not read ROM '" + romPath + "': " + e.getMessage());
             return;
         }
 
         Display display = new Display();
         Keypad keypad = new Keypad();
-        Cpu cpu = new Cpu(memory, display, keypad);
-        Emulator emulator = new Emulator(cpu);
+        Cpu cpu = new Cpu(memory, display, keypad, quirks);
+        Emulator emulator = new Emulator(cpu, quirks);
 
-        if (args.length == 1) {
+        if (remaining == 1) {
             SwingUtilities.invokeLater(() -> openWindow(display, keypad, emulator));
         } else {
             emulator.runSteps(steps);
