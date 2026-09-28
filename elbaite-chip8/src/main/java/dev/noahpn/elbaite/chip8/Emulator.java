@@ -1,5 +1,6 @@
 package dev.noahpn.elbaite.chip8;
 
+import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -17,9 +18,10 @@ import java.nio.file.Path;
  * emulator.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it opens the window and runs in real time, sixty frames a second, driven
- * by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap}. A frame is ten
- * steps and a tick, and with display wait on, a draw ends its frame.
+ * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
+ * driven by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap} and the
+ * machine beeping while the sound timer is above zero. A frame is ten steps and a tick, and with
+ * display wait on, a draw ends its frame.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
@@ -120,6 +122,16 @@ public final class Emulator {
         return toRun;
     }
 
+    /**
+     * Returns whether the tone should be sounding: true while the CPU's sound timer is
+     * above zero.
+     *
+     * @return {@code true} if the sound timer is above zero
+     */
+    public boolean isSounding() {
+        return cpu.getSoundTimer() > 0;
+    }
+
     private static void openWindow(Display display, Keypad keypad, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -148,10 +160,22 @@ public final class Emulator {
 
         frame.setVisible(true);
 
+        Beeper beeper;
+        try {
+            beeper = new Beeper();
+        } catch (LineUnavailableException e) {
+            IO.println("Sound unavailable: " + e.getMessage());
+            beeper = null;
+        }
+        final Beeper tone = beeper;
+
         long start = System.nanoTime();
         Timer timer = new Timer(TIMER_DELAY_MS, _ -> {
             if (emulator.catchUp(System.nanoTime() - start) > 0) {
                 panel.repaint();
+            }
+            if (tone != null) {
+                tone.setOn(emulator.isSounding());
             }
         });
         timer.start();

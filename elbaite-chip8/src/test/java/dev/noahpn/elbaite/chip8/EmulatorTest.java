@@ -3,7 +3,7 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class EmulatorTest {
 
@@ -70,6 +70,17 @@ class EmulatorTest {
 
         // One frame later: the skipped fifty-five are gone, so only the new one runs.
         assertEquals(1, emulator.catchUp(1_016_666_667L));
+    }
+
+    @Test
+    void isSoundingFollowsSoundTimer() {
+        assertFalse(emulator.isSounding());
+
+        cpu.setSoundTimer(0x01);
+        assertTrue(emulator.isSounding());
+
+        cpu.tick();
+        assertFalse(emulator.isSounding());
     }
 
     @Test

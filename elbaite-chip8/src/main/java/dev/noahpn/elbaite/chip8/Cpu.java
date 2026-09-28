@@ -256,9 +256,10 @@ public final class Cpu {
     /**
      * Returns the sound timer.
      *
-     * <p>No instruction reads this timer: it is meant to be heard, not read. A tone will
-     * play for as long as the value is above zero, though no sound is produced yet. The
-     * value falls by one on each {@link #tick()}, and stops at zero.
+     * <p>No instruction reads this timer: it is meant to be heard, not read. A tone plays
+     * for as long as the value is above zero; in the window, {@link Emulator#isSounding()}
+     * checks it once a frame and a {@link Beeper} plays it. The value falls by one on each
+     * {@link #tick()}, and stops at zero.
      *
      * @return the sound timer, {@code 0x00} to {@code 0xFF}
      */

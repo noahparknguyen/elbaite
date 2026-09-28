@@ -49,6 +49,12 @@
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
           <version>3.6.4</version>
+          <configuration>
+            <!-- Java Sound keeps a daemon thread alive for good, and exec:java would wait
+                 fifteen seconds for it after main returns. The window's own thread is not a
+                 daemon, so it is still waited for. -->
+            <cleanupDaemonThreads>false</cleanupDaemonThreads>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
