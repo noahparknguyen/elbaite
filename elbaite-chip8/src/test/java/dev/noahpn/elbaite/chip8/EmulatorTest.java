@@ -84,6 +84,66 @@ class EmulatorTest {
     }
 
     @Test
+    void setPausedRoundTrips() {
+        assertFalse(emulator.isPaused());
+        emulator.setPaused(true);
+        assertTrue(emulator.isPaused());
+        emulator.setPaused(false);
+        assertFalse(emulator.isPaused());
+    }
+
+    @Test
+    void catchUpRunsNothingWhilePaused() {
+        cpu.setDelayTimer(0xFF);
+        emulator.setPaused(true);
+
+        assertEquals(0, emulator.catchUp(50_000_000L));
+        assertEquals(0xFF, cpu.getDelayTimer());
+        assertEquals(0x00, cpu.readRegister(0x0));
+    }
+
+    @Test
+    void catchUpResumesWithoutBurst() {
+        emulator.setPaused(true);
+        emulator.catchUp(1_000_000_000L);
+        emulator.setPaused(false);
+
+        assertEquals(1, emulator.catchUp(1_016_666_667L));
+    }
+
+    @Test
+    void isSoundingSilentWhilePaused() {
+        cpu.setSoundTimer(0x10);
+
+        emulator.setPaused(true);
+        assertFalse(emulator.isSounding());
+
+        emulator.setPaused(false);
+        assertTrue(emulator.isSounding());
+    }
+
+    @Test
+    void stepInstructionReturnsOpcodeRun() {
+        Opcode opcode = emulator.stepInstruction();
+
+        assertEquals(0x7001, opcode.value());
+        assertEquals(0x01, cpu.readRegister(0x0));
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void stepInstructionNeverTicks() {
+        cpu.setDelayTimer(0xFF);
+
+        for (int i = 0; i < 10; i++) {
+            emulator.stepInstruction();
+        }
+
+        assertEquals(0xFF, cpu.getDelayTimer());
+        assertEquals(0x05, cpu.readRegister(0x0));
+    }
+
+    @Test
     void runStepsWaitsOutFrameAfterDraw() {
         memory.loadRom(new byte[]{0x70, 0x01, (byte) 0xD0, 0x01, 0x12, 0x00});
 

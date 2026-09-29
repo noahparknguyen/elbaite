@@ -23,6 +23,11 @@ import java.nio.file.Path;
  * machine beeping while the sound timer is above zero. A frame is ten steps and a tick, and with
  * display wait on, a draw ends its frame.
  *
+ * <p>In the window, {@code P} pauses and resumes: the title becomes {@code Achroite (paused)}
+ * and the registers print to the terminal. While paused, {@code N} runs one instruction, prints
+ * the address it ran from and the opcode it ran, then the registers, and repaints the screen.
+ * Time stands still while paused: no ticks, no display wait, and no sound.
+ *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
 public final class Emulator {
@@ -39,6 +44,7 @@ public final class Emulator {
     private final Cpu cpu;
     private final Quirks quirks;
     private long framesRun;
+    private boolean paused;
 
     /**
      * Creates an emulator that drives the given CPU with the {@link Quirks#VIP} preset.
@@ -106,11 +112,18 @@ public final class Emulator {
      * run. {@code elapsedNanos} counts from the loop's start and never goes down between
      * calls.
      *
+     * <p>While paused, no frames run: the frames due count as done and {@code 0} is
+     * returned, so pausing never saves up a burst of frames for the resume.
+     *
      * @param elapsedNanos nanoseconds since the loop started
      * @return how many frames were run
      */
     public int catchUp(long elapsedNanos) {
         long due = framesDue(elapsedNanos);
+        if (paused) {
+            framesRun = due;
+            return 0;
+        }
         long behind = due - framesRun;
         int toRun = (int) Math.min(behind, CATCH_UP_LIMIT);
 
@@ -124,15 +137,47 @@ public final class Emulator {
 
     /**
      * Returns whether the tone should be sounding: true while the CPU's sound timer is
-     * above zero.
+     * above zero. Always {@code false} while paused, so a frozen sound timer does not
+     * drone through a pause.
      *
-     * @return {@code true} if the sound timer is above zero
+     * @return {@code true} if the sound timer is above zero and the emulator is running
      */
     public boolean isSounding() {
-        return cpu.getSoundTimer() > 0;
+        return !paused && cpu.getSoundTimer() > 0;
     }
 
-    private static void openWindow(Display display, Keypad keypad, Emulator emulator) {
+    /**
+     * Returns whether the emulator is paused. A new emulator is running.
+     *
+     * @return {@code true} if the emulator is paused
+     */
+    public boolean isPaused() {
+        return paused;
+    }
+
+    /**
+     * Pauses or resumes the emulator. While paused, {@link #catchUp(long)} runs no frames
+     * (the frames due count as done) and {@link #isSounding()} is {@code false}.
+     *
+     * @param paused {@code true} to pause, {@code false} to resume
+     */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+    }
+
+    /**
+     * Runs exactly one instruction through the CPU and returns the opcode it ran. The
+     * timers never move: this is {@link Cpu#step()}, not {@link #runSteps(int)}, so there
+     * is no tick and no display wait. It works whether or not the emulator is paused;
+     * the window only calls it while paused.
+     *
+     * @return the opcode the CPU executed
+     */
+    public Opcode stepInstruction() {
+        return cpu.step();
+    }
+
+    private static void openWindow(Display display, Keypad keypad, Cpu cpu, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         DisplayPanel panel = new DisplayPanel(display);
@@ -143,7 +188,34 @@ public final class Emulator {
         frame.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
-                int key = KeyMap.keypadKey(event.getKeyCode());
+                int code = event.getKeyCode();
+
+                if (code == KeyEvent.VK_P) {
+                    if (emulator.isPaused()) {
+                        emulator.setPaused(false);
+                        frame.setTitle("Achroite");
+                        IO.println("Running");
+                    } else {
+                        emulator.setPaused(true);
+                        frame.setTitle("Achroite (paused)");
+                        IO.println("Paused");
+                        cpu.dump();
+                    }
+                    return;
+                }
+
+                if (code == KeyEvent.VK_N) {
+                    if (emulator.isPaused()) {
+                        int address = cpu.getProgramCounter();
+                        Opcode opcode = emulator.stepInstruction();
+                        IO.println(String.format("%04X: %04X", address, opcode.value()));
+                        cpu.dump();
+                        panel.repaint();
+                    }
+                    return;
+                }
+
+                int key = KeyMap.keypadKey(code);
                 if (key != -1) {
                     keypad.press(key);
                 }
@@ -240,7 +312,7 @@ public final class Emulator {
         Emulator emulator = new Emulator(cpu, quirks);
 
         if (remaining == 1) {
-            SwingUtilities.invokeLater(() -> openWindow(display, keypad, emulator));
+            SwingUtilities.invokeLater(() -> openWindow(display, keypad, cpu, emulator));
         } else {
             emulator.runSteps(steps);
             display.dump();
