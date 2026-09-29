@@ -9,10 +9,10 @@ import java.nio.file.Path;
  * The emulator program and its clock: it loads a ROM and runs it, either in the terminal for a
  * given number of steps or live in an {@link EmulatorWindow}.
  *
- * <p>The command line is {@code Emulator [--quirks vip|schip|octo] <rom-path> [steps]}. The
- * optional {@code --quirks} must come first and picks a preset from {@link Quirks#forName};
- * without it, {@link Quirks#VIP}. The same preset goes to both the {@link Cpu} and the
- * emulator.
+ * <p>The command line is {@code Emulator [--quirks vip|schip|octo] <rom-path> [steps]},
+ * read by {@link Command#parse}. The optional {@code --quirks} must come first and picks a
+ * preset from {@link Quirks#forName}; without it, {@link Quirks#VIP}. The same preset goes
+ * to both the {@link Cpu} and the emulator.
  *
  * <p>{@code --version} on its own prints the name and version and exits.
  *
@@ -31,9 +31,6 @@ public final class Emulator {
     private static final int FRAMES_PER_SECOND = 60;
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
     private static final int CATCH_UP_LIMIT = 5;
-
-    private static final String USAGE =
-        "Usage: Emulator [--quirks vip|schip|octo] <rom-path> [steps]";
 
     private final Cpu cpu;
     private final Quirks quirks;
@@ -188,71 +185,45 @@ public final class Emulator {
         return "Achroite " + version;
     }
 
-    static void main(String[] args) {
-        if (args.length == 1 && args[0].equals("--version")) {
-            IO.println(version());
-            return;
-        }
-
-        Quirks quirks = Quirks.VIP;
-        int next = 0;
-
-        if (next < args.length && args[next].equals("--quirks")) {
-            next++;
-            if (next >= args.length) {
-                IO.println(USAGE);
-                return;
-            }
-            try {
-                quirks = Quirks.forName(args[next]);
-            } catch (IllegalArgumentException e) {
-                IO.println(USAGE);
-                return;
-            }
-            next++;
-        }
-
-        int remaining = args.length - next;
-        if (remaining < 1 || remaining > 2) {
-            IO.println(USAGE);
-            return;
-        }
-
-        String romPath = args[next];
-        int steps = 0;
-
-        if (remaining == 2) {
-            try {
-                steps = Integer.parseInt(args[next + 1]);
-            } catch (NumberFormatException e) {
-                IO.println(USAGE);
-                return;
-            }
-            if (steps < 1) {
-                IO.println(USAGE);
-                return;
-            }
-        }
-
-        Machine machine;
-
+    // Loads the ROM, or prints why it could not and returns null.
+    private static Machine load(Path rom, Quirks quirks) {
         try {
-            machine = Machine.load(Path.of(romPath), quirks);
+            return Machine.load(rom, quirks);
         } catch (NoSuchFileException e) {
-            IO.println("ROM not found: " + romPath);
-            return;
+            IO.println("ROM not found: " + rom);
+            return null;
         } catch (IOException e) {
-            IO.println("Could not read ROM '" + romPath + "': " + e.getMessage());
+            IO.println("Could not read ROM '" + rom + "': " + e.getMessage());
+            return null;
+        }
+    }
+
+    static void main(String[] args) {
+        Command command;
+        try {
+            command = Command.parse(args);
+        } catch (IllegalArgumentException e) {
+            IO.println(Command.USAGE);
             return;
         }
 
-        if (remaining == 1) {
-            SwingUtilities.invokeLater(() -> EmulatorWindow.open(machine));
-        } else {
-            machine.emulator().runSteps(steps);
-            IO.print(machine.display().dump());
-            IO.println();
-            IO.print(machine.cpu().dump());
+        switch (command) {
+            case Command.ShowVersion _ -> IO.println(version());
+            case Command.RunInTerminal(Quirks quirks, Path rom, int steps) -> {
+                Machine machine = load(rom, quirks);
+                if (machine != null) {
+                    machine.emulator().runSteps(steps);
+                    IO.print(machine.display().dump());
+                    IO.println();
+                    IO.print(machine.cpu().dump());
+                }
+            }
+            case Command.OpenWindow(Quirks quirks, Path rom) -> {
+                Machine machine = load(rom, quirks);
+                if (machine != null) {
+                    SwingUtilities.invokeLater(() -> EmulatorWindow.open(machine));
+                }
+            }
         }
     }
 }
