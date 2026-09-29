@@ -3,6 +3,7 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.stream.IntStream;
 
@@ -123,6 +124,37 @@ class CpuTest {
         assertThrows(IllegalArgumentException.class, () -> cpu.setDelayTimer(256));
         assertThrows(IllegalArgumentException.class, () -> cpu.setSoundTimer(-1));
         assertThrows(IllegalArgumentException.class, () -> cpu.setSoundTimer(256));
+    }
+
+    // --- Dump ---
+
+    @Test
+    void dumpListsRegistersFourToALine() {
+        cpu.writeRegister(0x0, 0x12);
+        cpu.writeRegister(0x5, 0xAB);
+        cpu.writeRegister(0xF, 0xFF);
+
+        List<String> lines = cpu.dump().lines().toList();
+
+        assertEquals("V0 12  V1 00  V2 00  V3 00", lines.get(0));
+        assertEquals("V4 00  V5 AB  V6 00  V7 00", lines.get(1));
+        assertEquals("VC 00  VD 00  VE 00  VF FF", lines.get(3));
+        assertEquals("STACK -", lines.get(7));
+    }
+
+    @Test
+    void dumpShowsIndexCounterTimersAndStack() {
+        cpu.setIndexRegister(0x300);
+        cpu.execute(new Opcode(0x2ABC));
+        cpu.setDelayTimer(0x3C);
+        cpu.setSoundTimer(0x05);
+
+        List<String> lines = cpu.dump().lines().toList();
+
+        assertEquals("I  0300", lines.get(4));
+        assertEquals("PC 0ABC", lines.get(5));
+        assertEquals("DT 3C  ST 05", lines.get(6));
+        assertEquals("STACK 0200", lines.get(7));
     }
 
     // --- Fetch ---

@@ -137,28 +137,36 @@ public final class Memory {
     }
 
     /**
-     * Prints a hex dump of a region of memory to standard output.
+     * Returns a hex dump of a region of memory as text.
      *
      * <p>Each line is the address of its first byte as four hex digits, then up to
      * sixteen byte values as two hex digits each. The last line is short if
-     * {@code length} is not a multiple of sixteen.
+     * {@code length} is not a multiple of sixteen, and has no trailing space. Every
+     * line ends with a line separator, the last included.
      *
-     * @param start  the address of the first byte to print
-     * @param length how many bytes to print
+     * <p>This returns the text; it does not print it.
+     *
+     * @param start  the address of the first byte to dump
+     * @param length how many bytes to dump
+     * @return the hex dump
      * @throws IndexOutOfBoundsException if any address in the region is outside
      *                                   {@code 0x000} to {@code 0xFFF}
      */
-    public void dump(int start, int length) {
+    public String dump(int start, int length) {
+        StringBuilder sb = new StringBuilder();
+
         for (int offset = 0; offset < length; offset += 16) {
-            IO.print(String.format("%04X  ", start + offset));
+            sb.append(String.format("%04X  ", start + offset));
             for (int column = 0; column < 16 && offset + column < length; column++) {
                 if (column > 0) {
-                    IO.print(" ");
+                    sb.append(" ");
                 }
-                IO.print(String.format("%02X", read(start + offset + column)));
+                sb.append(String.format("%02X", read(start + offset + column)));
             }
-            IO.println();
+            sb.append(System.lineSeparator());
         }
+
+        return sb.toString();
     }
 
     static void main(String[] args) {
@@ -173,7 +181,7 @@ public final class Memory {
             int length = memory.loadRom(path);
             IO.println("Loaded " + length + " bytes at 0x200");
             IO.println();
-            memory.dump(PROGRAM_START, length);
+            IO.print(memory.dump(PROGRAM_START, length));
         } catch (NoSuchFileException e) {
             IO.println("ROM not found: " + args[0]);
         } catch (IOException e) {

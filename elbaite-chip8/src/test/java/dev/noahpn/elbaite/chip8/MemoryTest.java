@@ -3,6 +3,8 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -85,5 +87,21 @@ class MemoryTest {
     void outOfRangeValueThrows() {
         assertThrows(IllegalArgumentException.class, () -> memory.write(0x200, 256));
         assertThrows(IllegalArgumentException.class, () -> memory.write(0x200, -1));
+    }
+
+    // --- Dump ---
+
+    @Test
+    void dumpFormatsSixteenBytesALine() {
+        for (int i = 0; i < 18; i++) {
+            memory.write(0x300 + i, i);
+        }
+
+        List<String> lines = memory.dump(0x300, 18).lines().toList();
+
+        assertEquals(2, lines.size());
+        assertEquals("0300  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F",
+            lines.get(0));
+        assertEquals("0310  10 11", lines.get(1));
     }
 }

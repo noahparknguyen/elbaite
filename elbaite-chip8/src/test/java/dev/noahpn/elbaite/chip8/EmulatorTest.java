@@ -83,7 +83,10 @@ class EmulatorTest {
         assertFalse(emulator.isSounding());
     }
 
+    // IntelliJ follows setPaused into isPaused and reports these assertions as constant.
+    // For a round trip that is the point: they fail only if the setter or getter breaks.
     @Test
+    @SuppressWarnings("ConstantValue")
     void setPausedRoundTrips() {
         assertFalse(emulator.isPaused());
         emulator.setPaused(true);

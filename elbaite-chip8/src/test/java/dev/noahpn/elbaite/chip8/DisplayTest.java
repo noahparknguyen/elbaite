@@ -3,6 +3,8 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class DisplayTest {
@@ -73,5 +75,17 @@ class DisplayTest {
                     "pixel (" + x + ", " + y + ") should be off after clear");
             }
         }
+    }
+
+    @Test
+    void dumpDrawsLitPixelsAsBlocks() {
+        display.setPixel(0, 0, true);
+        display.setPixel(63, 31, true);
+
+        List<String> lines = display.dump().lines().toList();
+
+        assertEquals(32, lines.size());
+        assertEquals("█" + " ".repeat(63), lines.getFirst());
+        assertEquals(" ".repeat(63) + "█", lines.get(31));
     }
 }

@@ -287,15 +287,21 @@ public final class Cpu {
     }
 
     /**
-     * Prints the whole register file to standard output: the sixteen general registers
-     * four to a line, then the index register and the program counter on lines of their
-     * own, then the two timers side by side on one line, then the call stack on the last
+     * Returns the whole register file as text: the sixteen general registers four to
+     * a line, then the index register and the program counter on lines of their own,
+     * then the two timers side by side on one line, then the call stack on the last
      * line, oldest entry first, or {@code -} when it is empty.
      *
      * <p>Values are hex, two digits for a general register and a timer, and four for
-     * {@code I}, {@code PC} and each stack entry.
+     * {@code I}, {@code PC} and each stack entry. Every line ends with a line separator,
+     * the last included, so the text prints as it is with {@code IO.print}.
+     *
+     * <p>This returns the text; it does not print it. The terminal harness prints it,
+     * and the window shows it in a {@link DebugView}.
+     *
+     * @return the register file as eight lines of text
      */
-    public void dump() {
+    public String dump() {
         StringBuilder sb = new StringBuilder();
 
         for (int i = 0; i < REGISTER_COUNT; i++) {
@@ -321,7 +327,7 @@ public final class Cpu {
         }
         sb.append(System.lineSeparator());
 
-        IO.print(sb.toString());
+        return sb.toString();
     }
 
     private void checkRegister(int register) {

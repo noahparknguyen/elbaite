@@ -2,6 +2,7 @@ package dev.noahpn.elbaite.chip8;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
@@ -20,8 +21,9 @@ import java.nio.file.Path;
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
  * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
  * driven by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap} and the
- * machine beeping while the sound timer is above zero. A frame is ten steps and a tick, and with
- * display wait on, a draw ends its frame.
+ * machine beeping while the sound timer is above zero. The window shows the screen with a
+ * {@link DebugView} beside it, refreshed on every timer firing. A frame is ten steps and a
+ * tick, and with display wait on, a draw ends its frame.
  *
  * <p>In the window, {@code P} pauses and resumes: the title becomes {@code Achroite (paused)}
  * and the registers print to the terminal. While paused, {@code N} runs one instruction, prints
@@ -113,7 +115,7 @@ public final class Emulator {
      * calls.
      *
      * <p>While paused, no frames run: the frames due count as done and {@code 0} is
-     * returned, so pausing never saves up a burst of frames for the resume.
+     * returned, so resuming never runs a burst of saved-up frames.
      *
      * @param elapsedNanos nanoseconds since the loop started
      * @return how many frames were run
@@ -168,8 +170,8 @@ public final class Emulator {
     /**
      * Runs exactly one instruction through the CPU and returns the opcode it ran. The
      * timers never move: this is {@link Cpu#step()}, not {@link #runSteps(int)}, so there
-     * is no tick and no display wait. It works whether or not the emulator is paused;
-     * the window only calls it while paused.
+     * is no tick and no display wait. It does not check the pause itself; the window only
+     * calls it while paused.
      *
      * @return the opcode the CPU executed
      */
@@ -177,11 +179,14 @@ public final class Emulator {
         return cpu.step();
     }
 
-    private static void openWindow(Display display, Keypad keypad, Cpu cpu, Emulator emulator) {
+    private static void openWindow(Memory memory, Display display, Keypad keypad,
+                                   Cpu cpu, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         DisplayPanel panel = new DisplayPanel(display);
-        frame.add(panel);
+        DebugView debugView = new DebugView(cpu, memory);
+        frame.add(panel, BorderLayout.CENTER);
+        frame.add(debugView, BorderLayout.EAST);
         frame.setResizable(false);
         frame.pack();
 
@@ -199,7 +204,7 @@ public final class Emulator {
                         emulator.setPaused(true);
                         frame.setTitle("Achroite (paused)");
                         IO.println("Paused");
-                        cpu.dump();
+                        IO.print(cpu.dump());
                     }
                     return;
                 }
@@ -209,7 +214,7 @@ public final class Emulator {
                         int address = cpu.getProgramCounter();
                         Opcode opcode = emulator.stepInstruction();
                         IO.println(String.format("%04X: %04X", address, opcode.value()));
-                        cpu.dump();
+                        IO.print(cpu.dump());
                         panel.repaint();
                     }
                     return;
@@ -249,6 +254,7 @@ public final class Emulator {
             if (tone != null) {
                 tone.setOn(emulator.isSounding());
             }
+            debugView.refresh();
         });
         timer.start();
     }
@@ -312,12 +318,13 @@ public final class Emulator {
         Emulator emulator = new Emulator(cpu, quirks);
 
         if (remaining == 1) {
-            SwingUtilities.invokeLater(() -> openWindow(display, keypad, cpu, emulator));
+            SwingUtilities.invokeLater(() ->
+                openWindow(memory, display, keypad, cpu, emulator));
         } else {
             emulator.runSteps(steps);
-            display.dump();
+            IO.print(display.dump());
             IO.println();
-            cpu.dump();
+            IO.print(cpu.dump());
         }
     }
 }

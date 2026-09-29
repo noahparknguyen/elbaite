@@ -93,26 +93,29 @@ public final class Display {
     }
 
     /**
-     * Prints the whole screen to standard output: {@link #HEIGHT} lines of
-     * {@link #WIDTH} characters, a filled block for a lit pixel and a space for a dark
-     * one.
+     * Returns the whole screen as text: {@link #HEIGHT} lines of {@link #WIDTH}
+     * characters, a filled block for a lit pixel and a space for a dark one. Every
+     * line ends with a line separator, the last included.
      *
      * <p>The same two characters {@link Font} uses, so the screen and the font viewer
      * read the same way. A blank background rather than a dotted one reads as a picture,
      * at the cost of showing where the screen ends.
+     *
+     * <p>This returns the text; it does not print it.
+     *
+     * @return the screen as text
      */
-    public void dump() {
+    public String dump() {
+        StringBuilder result = new StringBuilder();
+
         for (int y = 0; y < HEIGHT; y++) {
-            StringBuilder sb = new StringBuilder();
             for (int x = 0; x < WIDTH; x++) {
-                if (getPixel(x, y)) {
-                    sb.append('█');
-                } else {
-                    sb.append(' ');
-                }
+                result.append(getPixel(x, y) ? '█' : ' ');
             }
-            IO.println(sb.toString());
+            result.append(System.lineSeparator());
         }
+
+        return result.toString();
     }
 
     static void main() {
@@ -124,6 +127,6 @@ public final class Display {
                 }
             }
         }
-        display.dump();
+        IO.print(display.dump());
     }
 }
