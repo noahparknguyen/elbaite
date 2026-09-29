@@ -420,8 +420,8 @@ public final class Cpu {
      *                                       {@code I + 2} past {@code 0xFFF}, or
      *                                       {@code FX55} or {@code FX65} with
      *                                       {@code I + X} past {@code 0xFFF}
-     * @throws UnsupportedOperationException if the opcode has no handler yet, or is
-     *                                       not defined by CHIP-8 at all
+     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not
+     *                                       defined by CHIP-8 at all
      * @throws IllegalStateException         if the instruction is {@code 2NNN} with
      *                                       sixteen calls already nested, or
      *                                       {@code 00EE} with none
