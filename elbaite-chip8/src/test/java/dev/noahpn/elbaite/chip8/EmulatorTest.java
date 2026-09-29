@@ -25,6 +25,8 @@ class EmulatorTest {
         emulator = new Emulator(cpu);
     }
 
+    // --- Run steps ---
+
     @Test
     void runStepsTicksAfterEveryTenthStep() {
         cpu.setDelayTimer(0xFF);
@@ -34,124 +36,6 @@ class EmulatorTest {
         assertEquals(0x0D, cpu.readRegister(0x0));
         assertEquals(0x202, cpu.getProgramCounter());
         assertEquals(0xFD, cpu.getDelayTimer());
-    }
-
-    @Test
-    void framesDueCountsWholeFrames() {
-        assertEquals(0, Emulator.framesDue(0));
-        assertEquals(0, Emulator.framesDue(16_666_666L));
-        assertEquals(1, Emulator.framesDue(16_666_667L));
-        assertEquals(60, Emulator.framesDue(1_000_000_000L));
-    }
-
-    @Test
-    void framesDueHandlesLongRuns() {
-        assertEquals(216_000, Emulator.framesDue(3_600_000_000_000L));
-    }
-
-    @Test
-    void catchUpRunsFramesDue() {
-        cpu.setDelayTimer(0xFF);
-
-        assertEquals(3, emulator.catchUp(50_000_000L));
-        assertEquals(0xFC, cpu.getDelayTimer());
-    }
-
-    @Test
-    void catchUpNeverRunsAFrameTwice() {
-        // First call at 50 ms runs the three frames due.
-        assertEquals(3, emulator.catchUp(50_000_000L));
-
-        // Second call at the same instant: nothing new is due.
-        assertEquals(0, emulator.catchUp(50_000_000L));
-    }
-
-    @Test
-    void catchUpSkipsFramesPastLimit() {
-        // One second due: sixty frames, but only five run.
-        assertEquals(5, emulator.catchUp(1_000_000_000L));
-
-        // One frame later: the skipped fifty-five are gone, so only the new one runs.
-        assertEquals(1, emulator.catchUp(1_016_666_667L));
-    }
-
-    @Test
-    void isSoundingFollowsSoundTimer() {
-        assertFalse(emulator.isSounding());
-
-        cpu.setSoundTimer(0x01);
-        assertTrue(emulator.isSounding());
-
-        cpu.tick();
-        assertFalse(emulator.isSounding());
-    }
-
-    // IntelliJ follows setPaused into isPaused and reports these assertions as constant.
-    // For a round trip that is the point: they fail only if the setter or getter breaks.
-    @Test
-    @SuppressWarnings("ConstantValue")
-    void setPausedRoundTrips() {
-        assertFalse(emulator.isPaused());
-        emulator.setPaused(true);
-        assertTrue(emulator.isPaused());
-        emulator.setPaused(false);
-        assertFalse(emulator.isPaused());
-    }
-
-    @Test
-    void catchUpRunsNothingWhilePaused() {
-        cpu.setDelayTimer(0xFF);
-        emulator.setPaused(true);
-
-        assertEquals(0, emulator.catchUp(50_000_000L));
-        assertEquals(0xFF, cpu.getDelayTimer());
-        assertEquals(0x00, cpu.readRegister(0x0));
-    }
-
-    @Test
-    void catchUpResumesWithoutBurst() {
-        emulator.setPaused(true);
-        emulator.catchUp(1_000_000_000L);
-        emulator.setPaused(false);
-
-        assertEquals(1, emulator.catchUp(1_016_666_667L));
-    }
-
-    @Test
-    void isSoundingSilentWhilePaused() {
-        cpu.setSoundTimer(0x10);
-
-        emulator.setPaused(true);
-        assertFalse(emulator.isSounding());
-
-        emulator.setPaused(false);
-        assertTrue(emulator.isSounding());
-    }
-
-    @Test
-    void stepInstructionReturnsOpcodeRun() {
-        Opcode opcode = emulator.stepInstruction();
-
-        assertEquals(0x7001, opcode.value());
-        assertEquals(0x01, cpu.readRegister(0x0));
-        assertEquals(0x202, cpu.getProgramCounter());
-    }
-
-    @Test
-    void stepInstructionNeverTicks() {
-        cpu.setDelayTimer(0xFF);
-
-        for (int i = 0; i < 10; i++) {
-            emulator.stepInstruction();
-        }
-
-        assertEquals(0xFF, cpu.getDelayTimer());
-        assertEquals(0x05, cpu.readRegister(0x0));
-    }
-
-    @Test
-    void versionIsDevelopmentBuildOutsideJar() {
-        assertEquals("Achroite (development build)", Emulator.version());
     }
 
     @Test
@@ -194,6 +78,138 @@ class EmulatorTest {
         assertEquals(0x202, cpu.getProgramCounter(),
             "PC should have advanced through add, draw and jump each time");
     }
+
+    // --- Frames due ---
+
+    @Test
+    void framesDueCountsWholeFrames() {
+        assertEquals(0, Emulator.framesDue(0));
+        assertEquals(0, Emulator.framesDue(16_666_666L));
+        assertEquals(1, Emulator.framesDue(16_666_667L));
+        assertEquals(60, Emulator.framesDue(1_000_000_000L));
+    }
+
+    @Test
+    void framesDueHandlesLongRuns() {
+        assertEquals(216_000, Emulator.framesDue(3_600_000_000_000L));
+    }
+
+    // --- Catch up ---
+
+    @Test
+    void catchUpRunsFramesDue() {
+        cpu.setDelayTimer(0xFF);
+
+        assertEquals(3, emulator.catchUp(50_000_000L));
+        assertEquals(0xFC, cpu.getDelayTimer());
+    }
+
+    @Test
+    void catchUpNeverRunsAFrameTwice() {
+        // First call at 50 ms runs the three frames due.
+        assertEquals(3, emulator.catchUp(50_000_000L));
+
+        // Second call at the same instant: nothing new is due.
+        assertEquals(0, emulator.catchUp(50_000_000L));
+    }
+
+    @Test
+    void catchUpSkipsFramesPastLimit() {
+        // One second due: sixty frames, but only five run.
+        assertEquals(5, emulator.catchUp(1_000_000_000L));
+
+        // One frame later: the skipped fifty-five are gone, so only the new one runs.
+        assertEquals(1, emulator.catchUp(1_016_666_667L));
+    }
+
+    @Test
+    void catchUpRunsNothingWhilePaused() {
+        cpu.setDelayTimer(0xFF);
+        emulator.setPaused(true);
+
+        assertEquals(0, emulator.catchUp(50_000_000L));
+        assertEquals(0xFF, cpu.getDelayTimer());
+        assertEquals(0x00, cpu.readRegister(0x0));
+    }
+
+    @Test
+    void catchUpResumesWithoutBurst() {
+        emulator.setPaused(true);
+        emulator.catchUp(1_000_000_000L);
+        emulator.setPaused(false);
+
+        assertEquals(1, emulator.catchUp(1_016_666_667L));
+    }
+
+    // --- Sound ---
+
+    @Test
+    void isSoundingFollowsSoundTimer() {
+        assertFalse(emulator.isSounding());
+
+        cpu.setSoundTimer(0x01);
+        assertTrue(emulator.isSounding());
+
+        cpu.tick();
+        assertFalse(emulator.isSounding());
+    }
+
+    @Test
+    void isSoundingSilentWhilePaused() {
+        cpu.setSoundTimer(0x10);
+
+        emulator.setPaused(true);
+        assertFalse(emulator.isSounding());
+
+        emulator.setPaused(false);
+        assertTrue(emulator.isSounding());
+    }
+
+    // --- Pause ---
+
+    // IntelliJ follows setPaused into isPaused and reports these assertions as constant.
+    // For a round trip that is the point: they fail only if the setter or getter breaks.
+    @Test
+    @SuppressWarnings("ConstantValue")
+    void setPausedRoundTrips() {
+        assertFalse(emulator.isPaused());
+        emulator.setPaused(true);
+        assertTrue(emulator.isPaused());
+        emulator.setPaused(false);
+        assertFalse(emulator.isPaused());
+    }
+
+    // --- Step instruction ---
+
+    @Test
+    void stepInstructionReturnsOpcodeRun() {
+        Opcode opcode = emulator.stepInstruction();
+
+        assertEquals(0x7001, opcode.value());
+        assertEquals(0x01, cpu.readRegister(0x0));
+        assertEquals(0x202, cpu.getProgramCounter());
+    }
+
+    @Test
+    void stepInstructionNeverTicks() {
+        cpu.setDelayTimer(0xFF);
+
+        for (int i = 0; i < 10; i++) {
+            emulator.stepInstruction();
+        }
+
+        assertEquals(0xFF, cpu.getDelayTimer());
+        assertEquals(0x05, cpu.readRegister(0x0));
+    }
+
+    // --- Version ---
+
+    @Test
+    void versionIsDevelopmentBuildOutsideJar() {
+        assertEquals("Achroite (development build)", Emulator.version());
+    }
+
+    // --- Icons ---
 
     @Test
     void iconsLoadSmallestFirst() {

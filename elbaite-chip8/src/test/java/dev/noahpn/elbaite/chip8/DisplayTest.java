@@ -36,19 +36,6 @@ class DisplayTest {
     }
 
     @Test
-    void flipPixelReturnsPreviousState() {
-        // Dark to lit: reports that the pixel was off.
-        boolean previous = display.flipPixel(0, 0);
-        assertFalse(previous);
-        assertTrue(display.getPixel(0, 0));
-
-        // Lit to dark: reports that the pixel was on.
-        previous = display.flipPixel(0, 0);
-        assertTrue(previous);
-        assertFalse(display.getPixel(0, 0));
-    }
-
-    @Test
     void outOfRangePixelThrows() {
         assertThrows(IndexOutOfBoundsException.class, () -> display.getPixel(-1, 0));
         assertThrows(IndexOutOfBoundsException.class, () -> display.getPixel(64, 0));
@@ -59,6 +46,19 @@ class DisplayTest {
         assertThrows(IndexOutOfBoundsException.class, () -> display.setPixel(64, 0, true));
         assertThrows(IndexOutOfBoundsException.class, () -> display.setPixel(0, -1, true));
         assertThrows(IndexOutOfBoundsException.class, () -> display.setPixel(0, 32, true));
+    }
+
+    @Test
+    void flipPixelReturnsPreviousState() {
+        // Dark to lit: reports that the pixel was off.
+        boolean previous = display.flipPixel(0, 0);
+        assertFalse(previous);
+        assertTrue(display.getPixel(0, 0));
+
+        // Lit to dark: reports that the pixel was on.
+        previous = display.flipPixel(0, 0);
+        assertTrue(previous);
+        assertFalse(display.getPixel(0, 0));
     }
 
     @Test

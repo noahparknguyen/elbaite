@@ -529,7 +529,7 @@ class CpuTest {
     void shiftRightUpdatesFlagFromLeastSignificantBit() {
         // The flag is the bit shifted out: 0x01 has a 1, 0x02 has a 0.
         cpu.writeRegister(0xF, 0);
-        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x0, 0x00);
         cpu.writeRegister(0x1, 0x01);
 
         cpu.execute(new Opcode(0x8016));
@@ -538,7 +538,7 @@ class CpuTest {
 
         // A sentinel in VF catches a missing clear on the zero-bit case.
         cpu.writeRegister(0xF, 0xAA);
-        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x0, 0x00);
         cpu.writeRegister(0x1, 0x02);
 
         cpu.execute(new Opcode(0x8016));
@@ -558,7 +558,7 @@ class CpuTest {
         cpu.execute(new Opcode(0x8016));
 
         assertEquals(0x01, cpu.readRegister(0x0));
-        assertEquals(0x01, cpu.readRegister(0xF));
+        assertEquals(1, cpu.readRegister(0xF));
     }
 
     // 8XY7
@@ -612,7 +612,7 @@ class CpuTest {
     void shiftLeftUpdatesFlagFromMostSignificantBit() {
         // The flag is the bit shifted out: 0x80 has a 1, 0x40 has a 0.
         cpu.writeRegister(0xF, 0);
-        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x0, 0x00);
         cpu.writeRegister(0x1, 0x80);
 
         cpu.execute(new Opcode(0x801E));
@@ -621,7 +621,7 @@ class CpuTest {
 
         // A sentinel in VF catches a missing clear on the zero-bit case.
         cpu.writeRegister(0xF, 0xAA);
-        cpu.writeRegister(0x0, 0);
+        cpu.writeRegister(0x0, 0x00);
         cpu.writeRegister(0x1, 0x40);
 
         cpu.execute(new Opcode(0x801E));
@@ -640,7 +640,7 @@ class CpuTest {
         cpu.execute(new Opcode(0x801E));
 
         assertEquals(0x02, cpu.readRegister(0x0));
-        assertEquals(0x01, cpu.readRegister(0xF));
+        assertEquals(1, cpu.readRegister(0xF));
     }
 
     // 9XY0
