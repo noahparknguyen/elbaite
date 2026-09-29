@@ -17,7 +17,8 @@ import java.util.List;
 
 /**
  * The window ROMs run in, titled Achroite: a menu bar, the screen, and a {@link DebugView}
- * beside it.
+ * beside it. Both sit in 32 pixels of black, so a lit pixel at the screen's edge stands
+ * clear of the frame and of the grey line between the two.
  *
  * <p>File → Open ROM (Ctrl+O) picks a ROM with a file chooser and runs it in place of
  * whatever was running, with the preset the window was opened with; File → Exit closes the
@@ -55,12 +56,14 @@ public final class EmulatorWindow {
 
     private static final String TITLE = "Achroite";
     private static final int TIMER_DELAY_MS = 16;
+    private static final int MARGIN = 32;
     private static final String NO_ROM_HINT = """
         No ROM loaded.
 
         File > Open ROM, or Ctrl+O.""";
 
     private final JFrame frame = new JFrame(TITLE);
+    private final JPanel screenPanel = new JPanel(new BorderLayout());
     private final JPanel debugPanel = new JPanel(new GridBagLayout());
     private final Quirks quirks;
     private final Beeper beeper;
@@ -79,10 +82,14 @@ public final class EmulatorWindow {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setJMenuBar(menuBar());
 
+        screenPanel.setBackground(Color.BLACK);
+        screenPanel.setBorder(BorderFactory.createEmptyBorder(MARGIN, MARGIN, MARGIN, MARGIN));
+        frame.add(screenPanel, BorderLayout.CENTER);
+
         debugPanel.setBackground(Color.BLACK);
         debugPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY),
-            BorderFactory.createEmptyBorder(32, 32, 32, 32)));
+            BorderFactory.createEmptyBorder(MARGIN, MARGIN, MARGIN, MARGIN)));
         frame.add(debugPanel, BorderLayout.EAST);
 
         show(null, null);
@@ -241,10 +248,8 @@ public final class EmulatorWindow {
     // machine's clock starts at the next timer firing. The frame, the menus, the keys, the
     // beeper and the timer stay as they are.
     private void show(Machine machine, Path rom) {
-        if (displayPanel != null) {
-            frame.remove(displayPanel);
-            debugPanel.removeAll();
-        }
+        screenPanel.removeAll();
+        debugPanel.removeAll();
 
         this.machine = machine;
         this.rom = rom;
@@ -260,7 +265,7 @@ public final class EmulatorWindow {
             debugView = new DebugView(machine.cpu(), machine.memory());
             debugPanel.add(debugView);
         }
-        frame.add(displayPanel, BorderLayout.CENTER);
+        screenPanel.add(displayPanel);
 
         updateTitle();
         frame.revalidate();
