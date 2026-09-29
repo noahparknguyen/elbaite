@@ -60,6 +60,11 @@ public final class DebugView extends JTextArea {
         area.setForeground(Color.WHITE);
         area.setEditable(false);
         area.setFocusable(false);
+        // Swing sizes a text area to its text plus one pixel for the caret. A memory line
+        // is all 53 columns, so the first refresh made the view a pixel wider than the
+        // window was packed for, and the pixel came off the screen. This area never shows
+        // a caret, so it needs no room for one, and its width is its 53 columns, always.
+        area.putClientProperty("caretWidth", 0);
     }
 
     /**

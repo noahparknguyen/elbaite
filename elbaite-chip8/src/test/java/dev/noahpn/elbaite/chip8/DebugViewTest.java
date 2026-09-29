@@ -38,6 +38,20 @@ class DebugViewTest {
     }
 
     @Test
+    void configuredAreaKeepsWidthWhenFull() {
+        // A memory line fills all 53 columns. Swing adds a pixel for the caret to a text
+        // area's width once its text is that wide, and in 1.0.0 that pixel came off the
+        // screen. 424 wide empty became 425 at the first refresh.
+        JTextArea area = new JTextArea();
+        DebugView.configure(area);
+        int emptyWidth = area.getPreferredSize().width;
+
+        area.setText("0200  60 2A 12 02 00 00 00 00 00 00 00 00 00 00 00 00");
+
+        assertEquals(emptyWidth, area.getPreferredSize().width);
+    }
+
+    @Test
     void refreshShowsRegistersThenMemoryAtCounter() {
         memory.loadRom(new byte[]{0x60, 0x2A, 0x12, 0x02});
         cpu.step();
