@@ -1,3 +1,6 @@
+<!--suppress HtmlDeprecatedAttribute, CheckImageSize: GitHub strips CSS from a README, so align is the only
+    way to centre, and the screenshots are shown smaller than they are on purpose. -->
+
 # Elbaite
 
 <p align="center">
@@ -151,4 +154,4 @@ GitHub Actions runs the tests and builds the jar on every push to `main`.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [`LICENSE`](LICENSE).
