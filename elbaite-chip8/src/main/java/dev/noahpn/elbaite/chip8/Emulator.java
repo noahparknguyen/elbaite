@@ -1,21 +1,13 @@
 package dev.noahpn.elbaite.chip8;
 
-import javax.imageio.ImageIO;
-import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * The emulator program: it loads a ROM and runs it, either in the terminal for a given number of
- * steps or live in a window titled Achroite.
+ * The emulator program and its clock: it loads a ROM and runs it, either in the terminal for a
+ * given number of steps or live in an {@link EmulatorWindow}.
  *
  * <p>The command line is {@code Emulator [--quirks vip|schip|octo] <rom-path> [steps]}. The
  * optional {@code --quirks} must come first and picks a preset from {@link Quirks#forName};
@@ -25,19 +17,13 @@ import java.util.List;
  * <p>{@code --version} on its own prints the name and version and exits.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
- * driven by a Swing timer, with the keyboard mapped onto the keypad by {@link KeyMap} and the
- * machine beeping while the sound timer is above zero. The window shows the screen with a
- * {@link DebugView} beside it, refreshed on every timer firing. A frame is ten steps and a
- * tick, and with display wait on, a draw ends its frame.
+ * terminal. Without one, it opens the window, which runs the machine in real time, sixty
+ * frames a second. Either way the ROM runs on a {@link Machine}, built from it and the preset.
  *
- * <p>In the window, {@code P} pauses and resumes: the title becomes {@code Achroite (paused)}
- * and the registers print to the terminal. While paused, {@code N} runs one instruction, prints
- * the address it ran from and the opcode it ran, then the registers, and repaints the screen.
- * Each of these ends with a blank line, so every press reads as a block of its own. Time
- * stands still while paused: no ticks, no display wait, and no sound.
- *
- * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
+ * <p>Instances are the machine's clock. They drive a {@link Cpu} in frames: a frame is ten
+ * steps and a tick, and with display wait on, a draw ends its frame. Both modes share
+ * {@link #runSteps(int)}; the window paces it with {@link #catchUp(long)}, and pauses and
+ * steps it.
  */
 public final class Emulator {
 
@@ -45,7 +31,6 @@ public final class Emulator {
     private static final int FRAMES_PER_SECOND = 60;
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
     private static final int CATCH_UP_LIMIT = 5;
-    private static final int TIMER_DELAY_MS = 16;
 
     private static final String USAGE =
         "Usage: Emulator [--quirks vip|schip|octo] <rom-path> [steps]";
@@ -203,127 +188,6 @@ public final class Emulator {
         return "Achroite " + version;
     }
 
-    /**
-     * Loads the three Achroite icon sizes from the class's own resource folder, smallest
-     * for the title bar and largest for the taskbar. Returns an empty list if any of them
-     * is missing or unreadable, in which case the window runs without an icon.
-     *
-     * <p>{@code getResource} returns {@code null} for a missing file rather than throwing,
-     * so the null check names the file in the message. {@code ImageIO.read} on a
-     * {@code null} URL fails with a message that does not.
-     *
-     * @return the three icons, or an empty list if any could not be loaded
-     */
-    static List<Image> icons() {
-        String[] names = {"achroite-16.png", "achroite-32.png", "achroite-96.png"};
-        List<Image> images = new ArrayList<>();
-        for (String name : names) {
-            URL url = Emulator.class.getResource(name);
-            if (url == null) {
-                IO.println("Icon unavailable: " + name);
-                return List.of();
-            }
-            try {
-                images.add(ImageIO.read(url));
-            } catch (IOException e) {
-                IO.println("Icon unavailable: " + name);
-                return List.of();
-            }
-        }
-        return images;
-    }
-
-    private static void openWindow(Memory memory, Display display, Keypad keypad,
-                                   Cpu cpu, Emulator emulator) {
-        JFrame frame = new JFrame("Achroite");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        DisplayPanel panel = new DisplayPanel(display);
-        DebugView debugView = new DebugView(cpu, memory);
-
-        JPanel debugPanel = new JPanel(new GridBagLayout());
-        debugPanel.setBackground(Color.BLACK);
-        debugPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY),
-            BorderFactory.createEmptyBorder(32, 32, 32, 32)));
-        debugPanel.add(debugView);
-
-        frame.add(panel, BorderLayout.CENTER);
-        frame.add(debugPanel, BorderLayout.EAST);
-        frame.setResizable(false);
-        frame.pack();
-
-        frame.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent event) {
-                int code = event.getKeyCode();
-
-                if (code == KeyEvent.VK_P) {
-                    if (emulator.isPaused()) {
-                        emulator.setPaused(false);
-                        frame.setTitle("Achroite");
-                        IO.println("Running");
-                    } else {
-                        emulator.setPaused(true);
-                        frame.setTitle("Achroite (paused)");
-                        IO.println("Paused");
-                        IO.print(cpu.dump());
-                    }
-                    IO.println();
-                    return;
-                }
-
-                if (code == KeyEvent.VK_N) {
-                    if (emulator.isPaused()) {
-                        int address = cpu.getProgramCounter();
-                        Opcode opcode = emulator.stepInstruction();
-                        IO.println(String.format("%04X: %04X", address, opcode.value()));
-                        IO.print(cpu.dump());
-                        IO.println();
-                        panel.repaint();
-                    }
-                    return;
-                }
-
-                int key = KeyMap.keypadKey(code);
-                if (key != -1) {
-                    keypad.press(key);
-                }
-            }
-
-            @Override
-            public void keyReleased(KeyEvent event) {
-                int key = KeyMap.keypadKey(event.getKeyCode());
-                if (key != -1) {
-                    keypad.release(key);
-                }
-            }
-        });
-
-        frame.setIconImages(icons());
-        frame.setVisible(true);
-
-        Beeper beeper;
-        try {
-            beeper = new Beeper();
-        } catch (LineUnavailableException e) {
-            IO.println("Sound unavailable: " + e.getMessage());
-            beeper = null;
-        }
-        final Beeper tone = beeper;
-
-        long start = System.nanoTime();
-        Timer timer = new Timer(TIMER_DELAY_MS, _ -> {
-            if (emulator.catchUp(System.nanoTime() - start) > 0) {
-                panel.repaint();
-            }
-            if (tone != null) {
-                tone.setOn(emulator.isSounding());
-            }
-            debugView.refresh();
-        });
-        timer.start();
-    }
-
     static void main(String[] args) {
         if (args.length == 1 && args[0].equals("--version")) {
             IO.println(version());
@@ -370,10 +234,10 @@ public final class Emulator {
             }
         }
 
-        Memory memory = new Memory();
+        Machine machine;
 
         try {
-            memory.loadRom(Path.of(romPath));
+            machine = Machine.load(Path.of(romPath), quirks);
         } catch (NoSuchFileException e) {
             IO.println("ROM not found: " + romPath);
             return;
@@ -382,19 +246,13 @@ public final class Emulator {
             return;
         }
 
-        Display display = new Display();
-        Keypad keypad = new Keypad();
-        Cpu cpu = new Cpu(memory, display, keypad, quirks);
-        Emulator emulator = new Emulator(cpu, quirks);
-
         if (remaining == 1) {
-            SwingUtilities.invokeLater(() ->
-                openWindow(memory, display, keypad, cpu, emulator));
+            SwingUtilities.invokeLater(() -> EmulatorWindow.open(machine));
         } else {
-            emulator.runSteps(steps);
-            IO.print(display.dump());
+            machine.emulator().runSteps(steps);
+            IO.print(machine.display().dump());
             IO.println();
-            IO.print(cpu.dump());
+            IO.print(machine.cpu().dump());
         }
     }
 }

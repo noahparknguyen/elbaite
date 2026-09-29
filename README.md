@@ -39,7 +39,7 @@ Game Boy is going to need.
   at the program counter.
 - **A terminal mode** that runs a fixed number of steps and prints the screen and registers, for checking a ROM's
   output exactly.
-- **149 unit tests.**
+- **154 unit tests.**
 
 ## Requirements
 
