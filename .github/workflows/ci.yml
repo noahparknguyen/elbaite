@@ -1,0 +1,29 @@
+# The check that has to stay green: every test passes and the jar still builds.
+# `mvn verify` runs the same thing locally; this is the part that doesn't depend
+# on anyone remembering to.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Temurin 25, the JDK the POM compiles for (maven.compiler.release 25).
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      # Compiles, runs every test, then packages the jar, so a change that breaks
+      # the build or the manifest fails here as well as one that breaks a test.
+      # The runner has no display and no sound device, and the tests need
+      # neither: Surefire runs them headless, and none of them opens an audio line.
+      - name: Test and package
+        run: mvn --batch-mode verify
