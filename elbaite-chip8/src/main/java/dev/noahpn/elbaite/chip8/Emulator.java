@@ -1,13 +1,17 @@
 package dev.noahpn.elbaite.chip8;
 
+import javax.imageio.ImageIO;
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The emulator program: it loads a ROM and runs it, either in the terminal for a given number of
@@ -17,6 +21,8 @@ import java.nio.file.Path;
  * optional {@code --quirks} must come first and picks a preset from {@link Quirks#forName};
  * without it, {@link Quirks#VIP}. The same preset goes to both the {@link Cpu} and the
  * emulator.
+ *
+ * <p>{@code --version} on its own prints the name and version and exits.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
  * terminal. Without one, it opens the window and runs in real time, sixty frames a second,
@@ -179,14 +185,69 @@ public final class Emulator {
         return cpu.step();
     }
 
+    /**
+     * Returns the program's name and version. When running from the jar, the version
+     * comes from the manifest's {@code Implementation-Version}, which the jar plugin
+     * fills in from the POM, so nothing here hard-codes it. When running from plain
+     * class files, as every test and every {@code exec:java} run does, there is no
+     * manifest, and this returns {@code Achroite (development build)}.
+     *
+     * @return the name and version
+     */
+    public static String version() {
+        String version = Emulator.class.getPackage().getImplementationVersion();
+        if (version == null) {
+            return "Achroite (development build)";
+        }
+        return "Achroite " + version;
+    }
+
+    /**
+     * Loads the three Achroite icon sizes from the class's own resource folder, smallest
+     * for the title bar and largest for the taskbar. Returns an empty list if any of them
+     * is missing or unreadable, in which case the window runs without an icon.
+     *
+     * <p>{@code getResource} returns {@code null} for a missing file rather than throwing,
+     * so the null check names the file in the message. {@code ImageIO.read} on a
+     * {@code null} URL fails with a message that does not.
+     *
+     * @return the three icons, or an empty list if any could not be loaded
+     */
+    static List<Image> icons() {
+        String[] names = {"achroite-16.png", "achroite-32.png", "achroite-96.png"};
+        List<Image> images = new ArrayList<>();
+        for (String name : names) {
+            URL url = Emulator.class.getResource(name);
+            if (url == null) {
+                IO.println("Icon unavailable: " + name);
+                return List.of();
+            }
+            try {
+                images.add(ImageIO.read(url));
+            } catch (IOException e) {
+                IO.println("Icon unavailable: " + name);
+                return List.of();
+            }
+        }
+        return images;
+    }
+
     private static void openWindow(Memory memory, Display display, Keypad keypad,
                                    Cpu cpu, Emulator emulator) {
         JFrame frame = new JFrame("Achroite");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         DisplayPanel panel = new DisplayPanel(display);
         DebugView debugView = new DebugView(cpu, memory);
+
+        JPanel debugPanel = new JPanel(new GridBagLayout());
+        debugPanel.setBackground(Color.BLACK);
+        debugPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY),
+            BorderFactory.createEmptyBorder(32, 32, 32, 32)));
+        debugPanel.add(debugView);
+
         frame.add(panel, BorderLayout.CENTER);
-        frame.add(debugView, BorderLayout.EAST);
+        frame.add(debugPanel, BorderLayout.EAST);
         frame.setResizable(false);
         frame.pack();
 
@@ -235,6 +296,7 @@ public final class Emulator {
             }
         });
 
+        frame.setIconImages(icons());
         frame.setVisible(true);
 
         Beeper beeper;
@@ -260,6 +322,11 @@ public final class Emulator {
     }
 
     static void main(String[] args) {
+        if (args.length == 1 && args[0].equals("--version")) {
+            IO.println(version());
+            return;
+        }
+
         Quirks quirks = Quirks.VIP;
         int next = 0;
 

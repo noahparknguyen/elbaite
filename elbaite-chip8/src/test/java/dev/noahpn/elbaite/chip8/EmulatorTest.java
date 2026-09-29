@@ -3,6 +3,9 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.awt.*;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmulatorTest {
@@ -147,6 +150,11 @@ class EmulatorTest {
     }
 
     @Test
+    void versionIsDevelopmentBuildOutsideJar() {
+        assertEquals("Achroite (development build)", Emulator.version());
+    }
+
+    @Test
     void runStepsWaitsOutFrameAfterDraw() {
         memory.loadRom(new byte[]{0x70, 0x01, (byte) 0xD0, 0x01, 0x12, 0x00});
 
@@ -185,5 +193,15 @@ class EmulatorTest {
             "with no wait, all four adds should have run");
         assertEquals(0x202, cpu.getProgramCounter(),
             "PC should have advanced through add, draw and jump each time");
+    }
+
+    @Test
+    void iconsLoadSmallestFirst() {
+        List<Image> icons = Emulator.icons();
+
+        assertEquals(3, icons.size());
+        assertEquals(16, icons.get(0).getWidth(null));
+        assertEquals(32, icons.get(1).getWidth(null));
+        assertEquals(96, icons.get(2).getWidth(null));
     }
 }
