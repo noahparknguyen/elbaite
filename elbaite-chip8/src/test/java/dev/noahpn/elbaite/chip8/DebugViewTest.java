@@ -3,10 +3,10 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class DebugViewTest {
 
@@ -21,6 +21,20 @@ class DebugViewTest {
         Keypad keypad = new Keypad();
         cpu = new Cpu(memory, display, keypad);
         view = new DebugView(cpu, memory);
+    }
+
+    @Test
+    void configureSizesAreaAndRefusesFocus() {
+        // The window's hint takes the view's place with no ROM loaded: the same size keeps
+        // the window from resizing, and a text area that took focus would deafen the keys.
+        JTextArea area = new JTextArea();
+
+        DebugView.configure(area);
+
+        assertEquals(13, area.getRows());
+        assertEquals(53, area.getColumns());
+        assertFalse(area.isEditable());
+        assertFalse(area.isFocusable());
     }
 
     @Test

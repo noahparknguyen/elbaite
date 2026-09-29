@@ -39,7 +39,7 @@ Game Boy is going to need.
   at the program counter.
 - **A terminal mode** that runs a fixed number of steps and prints the screen and registers, for checking a ROM's
   output exactly.
-- **159 unit tests.**
+- **167 unit tests.**
 
 ## Requirements
 
@@ -60,8 +60,11 @@ The jar needs nothing but a Java 25 runtime. From the root of the repo:
 **In a window:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar <rom-path>
+java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar [<rom-path>]
 ```
+
+Without a ROM path, the window opens empty. **File → Open ROM** (Ctrl+O) opens one, then or any time after, in
+place of whatever is running. If a ROM can't be loaded, or stops with an error while it runs, a dialogue says why.
 
 The debug view beside the screen shows the registers, the timers, the call stack, and four lines of memory starting at
 the line that holds the program counter, refreshed every frame.
@@ -82,11 +85,11 @@ It doesn't open a window.
 **Quirks:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar --quirks vip|schip|octo <rom-path> [steps]
+java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar --quirks vip|schip|octo [<rom-path> [steps]]
 ```
 
 `vip` follows the original COSMAC VIP, `schip` follows SUPER-CHIP as modern emulators run it, and `octo` follows
-Octo. The default is `vip`. The option has to come first.
+Octo. The default is `vip`. The option has to come first, and ROMs opened from the window run with it too.
 
 **Version:**
 

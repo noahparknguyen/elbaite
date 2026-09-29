@@ -3,6 +3,10 @@ package dev.noahpn.elbaite.chip8;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmulatorTest {
@@ -204,5 +208,38 @@ class EmulatorTest {
     @Test
     void versionIsDevelopmentBuildOutsideJar() {
         assertEquals("Achroite (development build)", Emulator.version());
+    }
+
+    // --- Load failures ---
+
+    @Test
+    void loadFailureNamesMissingRom() {
+        Path rom = Path.of("roms/nope.ch8");
+
+        String message = Emulator.loadFailure(rom, new NoSuchFileException(rom.toString()));
+
+        assertEquals("ROM not found: roms/nope.ch8", message);
+    }
+
+    @Test
+    void loadFailureQuotesReadError() {
+        Path rom = Path.of("roms");
+
+        String message = Emulator.loadFailure(rom, new IOException("Is a directory"));
+
+        assertEquals("Could not read ROM 'roms': Is a directory", message);
+    }
+
+    @Test
+    void loadFailureQuotesOversizedRom() {
+        // The message Memory.loadRom throws for a ROM one byte too large.
+        IllegalArgumentException tooLarge =
+            new IllegalArgumentException("CHIP-8 ROM too large: 3585 bytes (max: 3584)");
+
+        String message = Emulator.loadFailure(Path.of("big.ch8"), tooLarge);
+
+        assertEquals(
+            "Could not load ROM 'big.ch8': CHIP-8 ROM too large: 3585 bytes (max: 3584)",
+            message);
     }
 }

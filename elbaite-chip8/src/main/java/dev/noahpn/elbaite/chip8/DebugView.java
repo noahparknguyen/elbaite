@@ -41,13 +41,25 @@ public final class DebugView extends JTextArea {
         this.cpu = cpu;
         this.memory = memory;
 
-        setRows(ROWS);
-        setColumns(COLUMNS);
-        setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
-        setBackground(Color.BLACK);
-        setForeground(Color.WHITE);
-        setEditable(false);
-        setFocusable(false);
+        configure(this);
+    }
+
+    /**
+     * Gives a text area the debug view's size and look: 13 rows of 53 columns, monospaced,
+     * white on black, read-only, and never taking keyboard focus. The window uses it for
+     * the text it shows in the view's place when no ROM is loaded, so the window keeps its
+     * size.
+     *
+     * @param area the text area to configure
+     */
+    static void configure(JTextArea area) {
+        area.setRows(ROWS);
+        area.setColumns(COLUMNS);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+        area.setBackground(Color.BLACK);
+        area.setForeground(Color.WHITE);
+        area.setEditable(false);
+        area.setFocusable(false);
     }
 
     /**

@@ -15,6 +15,19 @@ class CommandTest {
     }
 
     @Test
+    void noArgumentsOpensEmptyWindow() {
+        // What a double-clicked app gets: no arguments at all.
+        assertEquals(new Command.OpenWindow(Quirks.VIP, null), Command.parse(new String[]{}));
+    }
+
+    @Test
+    void quirksAloneOpensEmptyWindow() {
+        Command command = Command.parse(new String[]{"--quirks", "schip"});
+
+        assertEquals(new Command.OpenWindow(Quirks.SUPER_CHIP, null), command);
+    }
+
+    @Test
     void romAloneOpensWindow() {
         Command command = Command.parse(new String[]{"roms/ibm-logo.ch8"});
 
@@ -42,11 +55,10 @@ class CommandTest {
 
     @Test
     void malformedCommandLineThrows() {
-        // Each of these printed the usage line before Command existed, and still must.
+        // Each of these prints the usage line. No arguments, and --quirks with a preset but no
+        // ROM, open the window empty instead (Lab 27).
         String[][] malformed = {
-            {},
             {"--quirks"},
-            {"--quirks", "schip"},
             {"--quirks", "turbo", "roms/ibm-logo.ch8"},
             {"roms/ibm-logo.ch8", "200", "--quirks", "schip"},
             {"roms/ibm-logo.ch8", "zero"},

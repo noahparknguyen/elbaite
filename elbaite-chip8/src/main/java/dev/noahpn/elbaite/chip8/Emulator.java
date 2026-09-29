@@ -9,7 +9,7 @@ import java.nio.file.Path;
  * The emulator program and its clock: it loads a ROM and runs it, either in the terminal for a
  * given number of steps or live in an {@link EmulatorWindow}.
  *
- * <p>The command line is {@code Emulator [--quirks vip|schip|octo] <rom-path> [steps]},
+ * <p>The command line is {@code Emulator [--quirks vip|schip|octo] [<rom-path> [steps]]},
  * read by {@link Command#parse}. The optional {@code --quirks} must come first and picks a
  * preset from {@link Quirks#forName}; without it, {@link Quirks#VIP}. The same preset goes
  * to both the {@link Cpu} and the emulator.
@@ -17,8 +17,11 @@ import java.nio.file.Path;
  * <p>{@code --version} on its own prints the name and version and exits.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it opens the window, which runs the machine in real time, sixty
- * frames a second. Either way the ROM runs on a {@link Machine}, built from it and the preset.
+ * terminal. Without one, it opens the window, which runs the ROM in real time, sixty frames
+ * a second, or opens empty when there is no ROM path. Either way the ROM runs on a
+ * {@link Machine}, built from it and the preset. A ROM that cannot be loaded is reported in
+ * one message, {@code loadFailure}: printed in the terminal, shown in a dialogue by the
+ * window.
  *
  * <p>Instances are the machine's clock. They drive a {@link Cpu} in frames: a frame is ten
  * steps and a tick, and with display wait on, a draw ends its frame. Both modes share
@@ -185,15 +188,31 @@ public final class Emulator {
         return "Achroite " + version;
     }
 
+    /**
+     * Returns the one-line message for a ROM that {@link Machine#load(Path, Quirks)} could
+     * not load: the terminal prints it, and the window shows it in a dialogue.
+     *
+     * @param rom the ROM file that failed
+     * @param e   what {@code load} threw: an {@link IOException} if the file could not be
+     *            read, or an {@link IllegalArgumentException} if it was too large
+     * @return {@code ROM not found: <rom>} for a missing file,
+     *         {@code Could not read ROM '<rom>': <reason>} for another read failure, and
+     *         {@code Could not load ROM '<rom>': <reason>} for a ROM that does not fit
+     */
+    static String loadFailure(Path rom, Exception e) {
+        return switch (e) {
+            case NoSuchFileException _ -> "ROM not found: " + rom;
+            case IOException _ -> "Could not read ROM '" + rom + "': " + e.getMessage();
+            default -> "Could not load ROM '" + rom + "': " + e.getMessage();
+        };
+    }
+
     // Loads the ROM, or prints why it could not and returns null.
     private static Machine load(Path rom, Quirks quirks) {
         try {
             return Machine.load(rom, quirks);
-        } catch (NoSuchFileException e) {
-            IO.println("ROM not found: " + rom);
-            return null;
-        } catch (IOException e) {
-            IO.println("Could not read ROM '" + rom + "': " + e.getMessage());
+        } catch (IOException | IllegalArgumentException e) {
+            IO.println(loadFailure(rom, e));
             return null;
         }
     }
@@ -218,12 +237,8 @@ public final class Emulator {
                     IO.print(machine.cpu().dump());
                 }
             }
-            case Command.OpenWindow(Quirks quirks, Path rom) -> {
-                Machine machine = load(rom, quirks);
-                if (machine != null) {
-                    SwingUtilities.invokeLater(() -> EmulatorWindow.open(machine));
-                }
-            }
+            case Command.OpenWindow(Quirks quirks, Path rom) ->
+                SwingUtilities.invokeLater(() -> EmulatorWindow.open(quirks, rom));
         }
     }
 }
