@@ -34,7 +34,8 @@ import java.util.List;
  * <p>In the window, {@code P} pauses and resumes: the title becomes {@code Achroite (paused)}
  * and the registers print to the terminal. While paused, {@code N} runs one instruction, prints
  * the address it ran from and the opcode it ran, then the registers, and repaints the screen.
- * Time stands still while paused: no ticks, no display wait, and no sound.
+ * Each of these ends with a blank line, so every press reads as a block of its own. Time
+ * stands still while paused: no ticks, no display wait, and no sound.
  *
  * <p>Instances drive a {@link Cpu}; both modes share {@link #runSteps(int)}.
  */
@@ -267,6 +268,7 @@ public final class Emulator {
                         IO.println("Paused");
                         IO.print(cpu.dump());
                     }
+                    IO.println();
                     return;
                 }
 
@@ -276,6 +278,7 @@ public final class Emulator {
                         Opcode opcode = emulator.stepInstruction();
                         IO.println(String.format("%04X: %04X", address, opcode.value()));
                         IO.print(cpu.dump());
+                        IO.println();
                         panel.repaint();
                     }
                     return;
