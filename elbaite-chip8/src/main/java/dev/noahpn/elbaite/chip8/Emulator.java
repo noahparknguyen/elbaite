@@ -9,10 +9,10 @@ import java.nio.file.Path;
  * The emulator program and its clock: it loads a ROM and runs it, either in the terminal for a
  * given number of steps or live in an {@link EmulatorWindow}.
  *
- * <p>The command line is {@code Emulator [--quirks vip|schip|octo] [<rom-path> [steps]]},
- * read by {@link Command#parse}. The optional {@code --quirks} must come first and picks a
- * preset from {@link Quirks#forName}; without it, {@link Quirks#VIP}. The same preset goes
- * to both the {@link Cpu} and the emulator.
+ * <p>The command line is {@code Emulator [--quirks vip|schip|octo] [<rom-path> [steps]]}, read by
+ * {@link Command#parse}. The optional {@code --quirks} must come first and picks a preset from
+ * {@link Quirks#forName}; without it, {@link Quirks#VIP}. The same preset goes to both the
+ * {@link Cpu} and the emulator. In the window it is where the Quirks menu starts.
  *
  * <p>{@code --version} on its own prints the name and version and exits.
  *

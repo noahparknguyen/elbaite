@@ -34,12 +34,12 @@ Game Boy is going to need.
   mapped onto the VIP's hex keypad.
 - **Sound:** a 441 Hz tone for as long as the sound timer runs.
 - **Quirks:** where CHIP-8 interpreters disagree, a preset picks whose behaviour to follow: the original VIP (the
-  default), SUPER-CHIP, or Octo.
+  default), SUPER-CHIP, or Octo. In the window, a menu switches presets, or each of the six quirks on its own.
 - **A debugger:** pause, step one instruction at a time, and a live view of the registers, timers, stack and the memory
   at the program counter.
 - **A terminal mode** that runs a fixed number of steps and prints the screen and registers, for checking a ROM's
   output exactly.
-- **168 unit tests.**
+- **175 unit tests.**
 
 ## Requirements
 
@@ -89,7 +89,10 @@ java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar --quirks vip|schip|octo [
 ```
 
 `vip` follows the original COSMAC VIP, `schip` follows SUPER-CHIP as modern emulators run it, and `octo` follows
-Octo. The default is `vip`. The option has to come first, and ROMs opened from the window run with it too.
+Octo. The default is `vip`, and the option has to come first.
+
+In the window, the **Quirks** menu starts on that preset. It can pick another, or switch any of the six quirks on its
+own, each named as the quirks test names it: a tick is the test's ON. A change restarts the ROM from the beginning.
 
 **Version:**
 

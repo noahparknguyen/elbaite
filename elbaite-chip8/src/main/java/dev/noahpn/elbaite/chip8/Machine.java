@@ -8,11 +8,11 @@ import java.nio.file.Path;
  * One CHIP-8 machine running one ROM: its memory, display, keypad and processor, and the
  * emulator that clocks them, built together and wired to each other.
  *
- * <p>{@link #load(byte[], Quirks)} is how a machine is made. It creates every part, connects
- * them, and loads the ROM, so the five always belong together: the CPU fetches from this
- * memory, draws to this display and reads this keypad, and the emulator drives this CPU.
- * The same {@link Quirks} go to the CPU and to the emulator. A machine is never reused for
- * another ROM; a new program gets a new machine.
+ * <p>{@link #load(byte[], Quirks)} is how a machine is made. It creates every part, connects them,
+ * and loads the ROM, so the five always belong together: the CPU fetches from this memory, draws to
+ * this display and reads this keypad, and the emulator drives this CPU. The same {@link Quirks} go
+ * to the CPU and to the emulator. A machine is never reused: another ROM, or the same ROM with
+ * other quirks, gets a new machine.
  *
  * @param memory   the address space, with the font and the ROM loaded
  * @param display  the screen the CPU draws to

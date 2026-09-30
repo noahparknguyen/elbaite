@@ -11,6 +11,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,10 +21,16 @@ import java.util.List;
  * beside it. Both sit in 32 pixels of black, so a lit pixel at the screen's edge stands
  * clear of the frame and of the grey line between the two.
  *
- * <p>File → Open ROM (Ctrl+O) picks a ROM with a file chooser and runs it in place of
- * whatever was running, with the preset the window was opened with; File → Exit closes the
- * window. Started without a ROM, the window opens empty, with a hint where the debug view
- * goes. The title names the ROM running, as in {@code Achroite — br8kout.ch8}.
+ * <p>File → Open ROM (Ctrl+O) picks a ROM with a file chooser and runs it in place of whatever was
+ * running; File → Exit closes the window. Started without a ROM, the window opens empty, with a
+ * hint where the debug view goes. The title names the ROM running, as in
+ * {@code Achroite — br8kout.ch8}.
+ *
+ * <p>The {@link QuirksMenu} picks a preset, or switches the six quirks one by one, starting from
+ * the preset the window was opened with, and every ROM runs with what it shows. A program picks its
+ * machine when it starts, so a change restarts the ROM running from its beginning, with the new
+ * quirks; a paused ROM restarts paused. The restart uses the bytes read when the ROM was opened,
+ * and never reads the file again.
  *
  * <p>A Swing timer fires every 16 ms. Each firing runs the frames the real clock says are
  * due, sixty a second, through {@link Emulator#catchUp(long)}, repaints the screen if any
@@ -44,10 +51,10 @@ import java.util.List;
  * {@code (stopped)}, and another ROM can be opened as usual. While the file chooser is
  * open, a running ROM holds still.
  *
- * <p>The window outlives the machines it runs. The screen, the debug view and the clock
- * belong to a machine and are replaced with it; the frame, the menus, the keys, the beeper
- * and the timer belong to the window and stay. A machine's clock starts at the first timer
- * firing after it arrives, so it never inherits time that passed before it.
+ * <p>The window outlives the machines it runs. The screen, the debug view and the clock belong to a
+ * machine and are replaced with it; the frame, the menus, the quirks, the keys, the beeper and the
+ * timer belong to the window and stay. A machine's clock starts at the first timer firing after it
+ * arrives, so it never inherits time that passed before it.
  *
  * <p>Everything here runs on the event dispatch thread, keys, menus and timer alike, so
  * nothing needs a lock.
@@ -65,12 +72,13 @@ public final class EmulatorWindow {
     private final JFrame frame = new JFrame(TITLE);
     private final JPanel screenPanel = new JPanel(new BorderLayout());
     private final JPanel debugPanel = new JPanel(new GridBagLayout());
-    private final Quirks quirks;
     private final Beeper beeper;
 
     private JFileChooser chooser;
+    private Quirks quirks;
     private Machine machine;
     private Path rom;
+    private byte[] romBytes;
     private boolean stopped;
     private DisplayPanel displayPanel;
     private DebugView debugView;
@@ -142,11 +150,11 @@ public final class EmulatorWindow {
     }
 
     /**
-     * Opens the window with the given preset, running the ROM at {@code rom}, or empty when
-     * {@code rom} is {@code null}. A ROM that cannot be loaded leaves the window empty, with
-     * a dialogue saying why. Call this on the event dispatch thread.
+     * Opens the window with the given quirks ticked in its Quirks menu, running the ROM at
+     * {@code rom}, or empty when {@code rom} is {@code null}. A ROM that cannot be loaded leaves
+     * the window empty, with a dialogue saying why. Call this on the event dispatch thread.
      *
-     * @param quirks the preset for every ROM the window runs, not {@code null}
+     * @param quirks the quirks to start with, usually a preset, not {@code null}
      * @param rom    the ROM to run first, or {@code null}
      */
     public static void open(Quirks quirks, Path rom) {
@@ -240,6 +248,7 @@ public final class EmulatorWindow {
 
         JMenuBar bar = new JMenuBar();
         bar.add(file);
+        bar.add(new QuirksMenu(quirks, this::changeQuirks));
         return bar;
     }
 
@@ -310,14 +319,16 @@ public final class EmulatorWindow {
         return chooser;
     }
 
-    // Opens the ROM at path in place of whatever is running and returns true, or shows why
-    // it could not in a dialogue and returns false, leaving the window as it was. The dialogue
-    // names the file, not its whole path: from the chooser that path is absolute, and a
-    // one-line message as long as it can be wider than the screen.
+    // Opens the ROM at path in place of whatever is running and returns true, or shows why it could
+    // not in a dialogue and returns false, leaving the window as it was. The dialogue names the
+    // file, not its whole path: from the chooser that path is absolute, and a one-line message as
+    // long as it can be wider than the screen. The bytes are kept for a restart.
     private boolean openRom(Path path) {
+        byte[] bytes;
         Machine loaded;
         try {
-            loaded = Machine.load(path, quirks);
+            bytes = Files.readAllBytes(path);
+            loaded = Machine.load(bytes, quirks);
         } catch (IOException | IllegalArgumentException e) {
             Path name = path.getFileName() != null ? path.getFileName() : path;
             JOptionPane.showMessageDialog(frame, Emulator.loadFailure(name, e),
@@ -325,8 +336,23 @@ public final class EmulatorWindow {
             return false;
         }
 
+        romBytes = bytes;
         show(loaded, path);
         return true;
+    }
+
+    // Quirks menu. A program picks its machine when it starts, so the ROM running starts again from
+    // its beginning, on a new machine with the new quirks, from the bytes it was opened with. A ROM
+    // paused with P restarts paused, ready to step from its first instruction.
+    private void changeQuirks(Quirks changed) {
+        quirks = changed;
+        if (romBytes == null) {
+            return;
+        }
+
+        Machine restarted = Machine.load(romBytes, quirks);
+        restarted.emulator().setPaused(machine.emulator().isPaused());
+        show(restarted, rom);
     }
 
     // P: pause or resume, and print a block to the terminal.

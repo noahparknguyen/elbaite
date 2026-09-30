@@ -36,7 +36,7 @@ public sealed interface Command {
     /**
      * Open the window, running a ROM or empty and ready to open one.
      *
-     * @param quirks the preset for the ROMs it runs
+     * @param quirks the preset its Quirks menu starts on
      * @param rom    the ROM file, or {@code null} to open the window empty
      */
     record OpenWindow(Quirks quirks, Path rom) implements Command {
