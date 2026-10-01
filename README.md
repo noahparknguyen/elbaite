@@ -12,8 +12,11 @@ CHIP-8 emulator, and it's done. Achroite is elbaite's colourless variety, which 
 **Verdelite** (Game Boy) and **Paraíba** (Game Boy Color) are planned.
 
 <p align="center">
-  <img src="docs/br8kout.png" alt="Achroite running Br8kout, with the debug view beside the screen" width="720">
+  <img src="docs/br8kout.png" alt="Achroite running Br8kout, with the debug view open beside the screen" width="720">
 </p>
+
+Achroite runs on Windows and Linux with nothing else to install, and anywhere else Java 25 runs: see
+[Download](#download).
 
 ## Why
 
@@ -31,7 +34,7 @@ Game Boy is going to need.
 
 - **Every CHIP-8 instruction** of the original COSMAC VIP interpreter, except `0NNN` (see Limits).
 - **Runs in real time** in a Swing window: sixty frames a second, up to ten instructions a frame, with the keyboard
-  mapped onto the VIP's hex keypad.
+  mapped onto the VIP's hex keypad. ROMs open from its File menu.
 - **Sound:** a 441 Hz tone for as long as the sound timer runs.
 - **Quirks:** where CHIP-8 interpreters disagree, a preset picks whose behaviour to follow: the original VIP (the
   default), SUPER-CHIP, or Octo. In the window, a menu switches presets, or each of the six quirks on its own.
@@ -39,28 +42,104 @@ Game Boy is going to need.
   at the program counter.
 - **A terminal mode** that runs a fixed number of steps and prints the screen and registers, for checking a ROM's
   output exactly.
+- **Packages for Windows and Linux**, each carrying its own Java runtime, and a jar for anywhere else.
 - **176 unit tests.**
 
-## Requirements
+## Download
 
-Java 25 to run the jar. Java 25 and Maven 3.9 to build it.
+The [latest release](https://github.com/noahparknguyen/elbaite/releases/latest) has these files:
+
+| File                                   | What it is                                                |
+|----------------------------------------|-----------------------------------------------------------|
+| `elbaite-chip8-1.1.0-windows-x64.exe`  | The Windows installer                                     |
+| `elbaite-chip8-1.1.0-windows-x64.zip`  | Windows, portable: runs from any folder                   |
+| `elbaite-chip8-1.1.0-linux-x64.deb`    | The package for Ubuntu 22.04 or later, Debian 12 or later |
+| `elbaite-chip8-1.1.0-linux-x64.tar.gz` | Linux, portable: runs from any folder                     |
+| `elbaite-chip8-1.1.0.jar`              | The jar, for any system with Java 25, macOS included      |
+| `SHA256SUMS`                           | Every file's checksum, for checking a download            |
+
+The four packages each carry their own Java runtime, so there's nothing else to install.
+
+### Installing and removing
+
+**The Windows installer.** Run it. Achroite isn't signed with a code-signing certificate, so Windows may first say
+"Windows protected your PC": choose **More info**, then **Run anyway**. It installs for you alone, without administrator
+rights, into `%LOCALAPPDATA%\Achroite`, and offers a Start menu entry and a desktop shortcut. A newer version's
+installer replaces the older version.
+
+To remove it, open **Settings → Apps → Installed apps** (**Apps & features** on Windows 10) and uninstall Achroite.
+That removes everything it installed.
+
+**The Windows zip.** Unzip it anywhere and run `Achroite\Achroite.exe`. Windows may warn the same way. To remove it,
+delete the folder: Achroite keeps nothing anywhere else.
+
+**The `.deb`.** From the folder with the download:
+
+```
+sudo apt install ./elbaite-chip8-1.1.0-linux-x64.deb
+```
+
+Achroite then appears among the desktop's games, and `/opt/achroite/bin/Achroite` runs it from a terminal. To remove
+it:
+
+```
+sudo apt purge achroite
+```
+
+**The `.tar.gz`.** Unpack it anywhere and run `Achroite/bin/Achroite`. To remove it, delete the folder.
+
+On Linux, Java keeps a small font cache in `~/.java/fonts`, for Achroite as for every Java program, and removing a
+package leaves it, since packages don't touch home folders. It's only a cache: `rm -r ~/.java/fonts` deletes it.
+
+**The jar.** With Java 25 installed, `java -jar elbaite-chip8-1.1.0.jar` runs it. To remove it, delete it.
+
+### Checking a download
+
+`SHA256SUMS` lists the SHA-256 checksum of every file in the release. On Linux, from the folder with the downloads:
+
+```
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+On Windows, in PowerShell, compare what this prints with the file's line in `SHA256SUMS`:
+
+```
+Get-FileHash elbaite-chip8-1.1.0-windows-x64.exe
+```
+
+Every file also has a signed attestation of the workflow that built it and the commit it was built from. The
+[GitHub CLI](https://cli.github.com/) checks it:
+
+```
+gh attestation verify elbaite-chip8-1.1.0-windows-x64.exe --repo noahparknguyen/elbaite
+```
+
+Releases are immutable: once published, their files can't be changed or replaced.
 
 ## Build
 
+Java 25 is all it takes. The Maven Wrapper downloads Maven 3.9.16 the first time, and checks it against its checksum.
+From the root of the repo:
+
 ```
-mvn package
+./mvnw package
 ```
 
-This runs the tests, then writes `elbaite-chip8/target/elbaite-chip8-1.0.0.jar`. A failing test means no jar.
+On Windows, `mvnw.cmd package`. This runs the tests, then writes `elbaite-chip8/target/elbaite-chip8-1.1.0.jar`. A
+failing test means no jar.
+
+After that, `bash elbaite-chip8/packaging/package.sh` builds the packages for the system it runs on, into
+`elbaite-chip8/target/packages`. On Windows it needs Git Bash and WiX 3.
 
 ## Run
 
-The jar needs nothing but a Java 25 runtime. From the root of the repo:
+Installed, Achroite opens from the Start menu, or with the desktop's games. The jar runs from a terminal, here from the
+root of the repo after a build:
 
 **In a window:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar [<rom-path>]
+java -jar elbaite-chip8/target/elbaite-chip8-1.1.0.jar [<rom-path>]
 ```
 
 Without a ROM path, the window opens empty. **File → Open ROM** (Ctrl+O) opens one, then or any time after, in
@@ -73,7 +152,7 @@ frame. It starts closed, so the window is only as wide as the screen.
 **In the terminal:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar <rom-path> <steps>
+java -jar elbaite-chip8/target/elbaite-chip8-1.1.0.jar <rom-path> <steps>
 ```
 
 This runs the given number of steps, ticking the timers after every tenth, then prints the screen and the registers.
@@ -86,7 +165,7 @@ It doesn't open a window.
 **Quirks:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar --quirks vip|schip|octo [<rom-path> [steps]]
+java -jar elbaite-chip8/target/elbaite-chip8-1.1.0.jar --quirks vip|schip|octo [<rom-path> [steps]]
 ```
 
 `vip` follows the original COSMAC VIP, `schip` follows SUPER-CHIP as modern emulators run it, and `octo` follows
@@ -98,10 +177,10 @@ own, each named as the quirks test names it: a tick is the test's ON. A change r
 **Version:**
 
 ```
-java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar --version
+java -jar elbaite-chip8/target/elbaite-chip8-1.1.0.jar --version
 ```
 
-From the jar, this prints `Achroite 1.0.0`.
+From the jar, this prints `Achroite 1.1.0`.
 
 ## Keys
 
@@ -139,10 +218,10 @@ Achroite plays it.
 ## Tests
 
 ```
-mvn test
+./mvnw test
 ```
 
-GitHub Actions runs the tests and builds the jar on every push to `main`.
+On every push to `main`, GitHub Actions runs the tests on Linux and on Windows, and builds the jar and the packages.
 
 ## Limits
 

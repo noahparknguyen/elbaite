@@ -11,8 +11,9 @@ and credit you in the fix's release notes if you'd like.
 
 ## Supported versions
 
-Only the latest release is fixed. Each release carries the Java runtime that was current when
-it was built, so a Java security update means a new release.
+Only the latest release is fixed. Each package carries the Java runtime that was current when
+it was built, and its release notes name it. The jar runs on your own Java 25 instead, which
+stays as up to date as you keep it.
 
 ## What Achroite does on your computer
 
