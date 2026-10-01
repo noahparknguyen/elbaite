@@ -99,8 +99,11 @@ if [ $system = windows ]; then
 else
     tar -czf "$out/$name.tar.gz" -C "$work" Achroite
 
+    # linux/ holds the package's install and removal scripts: jpackage's own, except that a
+    # system with no desktop, and so no menu to add Achroite to, does not fail them.
     jpackage --type deb "${about[@]}" \
         --app-image "$work/Achroite" \
+        --resource-dir "$packaging/linux" \
         --license-file LICENSE \
         --about-url https://github.com/noahparknguyen/elbaite \
         --linux-package-name achroite \
