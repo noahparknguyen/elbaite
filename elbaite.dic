@@ -25,6 +25,17 @@ jupiter
 junit
 kout
 Langhoff's
+libasound
+libbsd
+libmd
+libx
+libxau
+libxcb
+libxdmcp
+libxext
+libxi
+libxrender
+libxtst
 mbc
 nibble
 nibbles

@@ -102,7 +102,12 @@ else
 
     # The resource folder gives the package its icon, since a .deb built from an app image
     # ignores --icon, and its install and removal scripts: jpackage's own, except that a system
-    # with no desktop, and so no menu to add Achroite to, does not fail them.
+    # with no desktop, and so no menu to add Achroite to, does not fail them. Its control file
+    # is jpackage's too, with the dependencies written out: jpackage's own list, but the sound
+    # library as libasound2, the name Ubuntu 22.04 and Debian 12 know, where it found
+    # libasound2t64, which newer systems also install for libasound2; and fontconfig, which
+    # brings a font. Java loads fontconfig only when the window opens, so jpackage cannot see
+    # it, and on a system with no fonts at all the window fails to open.
     jpackage --type deb "${about[@]}" \
         --app-image "$work/Achroite" \
         --resource-dir "$resources" \
