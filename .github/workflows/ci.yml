@@ -10,7 +10,8 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned, not -latest, so a new runner image never changes the check unannounced.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
