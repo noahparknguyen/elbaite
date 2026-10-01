@@ -1,0 +1,46 @@
+# Builds Achroite's native packages on the two systems they are made for: Windows (an
+# installer and a portable zip) and Linux (a .deb and a portable tar.gz). jpackage cannot build
+# for another system, so each is built on its own. The packages are kept as the run's
+# artifacts, to download and try.
+name: Packages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  package:
+    strategy:
+      # One system failing should not stop the other: both results are worth seeing.
+      fail-fast: false
+      matrix:
+        # Pinned, not -latest, so a new runner image never changes a package unannounced.
+        os: [windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Temurin 25, the JDK the POM compiles for. Its jpackage builds the packages, and its
+      # jlink cuts the runtime they carry.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      # The tests run on each system, so a failure only Windows shows turns up here.
+      - name: Test and package the jar
+        run: mvn --batch-mode verify
+
+      # Git Bash on Windows, so one script serves both. The Windows installer needs WiX 3,
+      # which the windows-2025 image has.
+      - name: Build the native packages
+        shell: bash
+        run: bash elbaite-chip8/packaging/package.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages-${{ runner.os }}
+          path: elbaite-chip8/target/packages/
+          if-no-files-found: error

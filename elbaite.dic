@@ -1,4 +1,5 @@
 achroite
+Achroite's
 annn
 apu
 bcd
@@ -14,6 +15,9 @@ gitignored
 hram
 indicolite
 javadoc
+jdeps
+jlink
+jpackage
 jupiter
 junit
 kout
