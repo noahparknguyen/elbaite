@@ -506,8 +506,8 @@ public final class EmulatorWindow {
 
         String reason = e.getMessage() != null ? e.getMessage() : e.toString();
         String message = rom.getFileName() + " stopped with an error:\n" + reason
-            + "\n\nIts registers and memory are beside the screen, as they were when it"
-            + " stopped.";
+            + "\n\nIts registers and memory stay as they were when it stopped, in the debug"
+            + " view (View > Debug view).";
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, message,
             "ROM stopped", JOptionPane.ERROR_MESSAGE));
     }
