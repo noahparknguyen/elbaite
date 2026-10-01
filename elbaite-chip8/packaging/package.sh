@@ -63,12 +63,14 @@ about=(
 
 # The app image: the launcher, the jar, and a Java runtime cut down to the two modules the
 # emulator uses. jdeps finds java.base and java.desktop, which has Swing, Java Sound and image
-# loading in it.
+# loading in it. -XX:-UsePerfData stops Java leaving an hsperfdata folder in the system's
+# temporary folder, which only monitoring tools read, so the app writes nothing at all.
 jpackage --type app-image "${about[@]}" \
     --icon "$resources/$icon" \
     --input "$input" \
     --main-jar "${jar##*/}" \
     --add-modules java.base,java.desktop \
+    --java-options -XX:-UsePerfData \
     --dest "$work"
 
 # The MIT licence goes with every copy, the portable ones included.
