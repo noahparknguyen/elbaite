@@ -1,0 +1,19 @@
+# Dependabot proposes updates as pull requests, and nothing merges without review: the
+# actions the workflows run, pinned to commits, so a new version is a new commit; and the
+# Maven plugins and JUnit in the POMs. A new version waits a week before it is proposed, so a
+# bad release has time to be caught and pulled first.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
