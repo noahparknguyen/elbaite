@@ -253,7 +253,31 @@ public final class EmulatorWindow {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ReflectiveOperationException | UnsupportedLookAndFeelException e) {
             IO.println("Windows look unavailable: " + e.getMessage());
+            return;
         }
+
+        // Windows' look leaves room for a check mark beside every plain menu item, as classic
+        // Windows menus do, so File's items sat behind an empty column. An icon of no width, as
+        // tall as the check mark it replaces so the rows keep their height, and no minimum text
+        // offset take the column away. Ticked and dotted items keep theirs.
+        Icon check = UIManager.getIcon("MenuItem.checkIcon");
+        int height = check != null ? check.getIconHeight() : 0;
+        UIManager.put("MenuItem.checkIcon", new Icon() {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 0;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return height;
+            }
+        });
+        UIManager.put("MenuItem.minimumTextOffset", 0);
     }
 
     private JMenuBar menuBar() {
