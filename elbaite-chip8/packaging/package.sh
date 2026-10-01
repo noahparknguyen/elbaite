@@ -11,7 +11,7 @@
 #     bash elbaite-chip8/packaging/package.sh
 #
 # The packages land in elbaite-chip8/target/packages, named after the jar, as in
-# elbaite-chip8-1.0.0-windows-x64.exe. Installed, the app is called Achroite.
+# elbaite-chip8-1.1.0-windows-x64.exe. Installed, the app is called Achroite.
 #
 # Each system's package resources are in its own folder, linux/ or windows/: the icon, named
 # after the app as jpackage expects, and on Linux the install and removal scripts. The icons
