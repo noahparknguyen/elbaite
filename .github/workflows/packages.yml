@@ -1,13 +1,21 @@
 # Builds Achroite's native packages on the two systems they are made for: an installer and a
 # portable zip on Windows, a .deb and a portable tar.gz on Linux. jpackage cannot build for
-# another system, so each is built on its own. The packages are kept as the run's artifacts,
-# to download and try.
+# another system, so each is built on its own. The packages, and the jar from Linux, are kept
+# as the run's artifacts, to download and try.
 name: Packages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  # The Release workflow builds its files here too, so what is released is built exactly as
+  # every push to main is.
+  workflow_call:
+    inputs:
+      release:
+        description: Build for a release, with nothing taken from the cache.
+        type: boolean
+        default: false
 
 # Read the code, nothing more: the packages are kept as the run's artifacts, which needs no
 # write access to the repository.
@@ -32,12 +40,14 @@ jobs:
           persist-credentials: false
 
       # Temurin 25, the JDK the POM compiles for. Its jpackage builds the packages, and its
-      # jlink cuts the runtime they carry.
+      # jlink cuts the runtime they carry. A release takes nothing from the cache: what it
+      # ships comes from the tagged code and fresh downloads alone, never from files an
+      # earlier run left behind.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: 25
-          cache: maven
+          cache: ${{ !inputs.release && 'maven' || '' }}
 
       # Through the Maven Wrapper, as anyone building from source runs it: mvnw on Linux,
       # mvnw.cmd on Windows. The tests run on each system, so a failure only Windows shows
@@ -60,4 +70,12 @@ jobs:
         with:
           name: packages-${{ runner.os }}
           path: elbaite-chip8/target/packages/
+          if-no-files-found: error
+
+      # The jar runs on any system with Java 25, so one copy is kept, Linux's.
+      - if: runner.os == 'Linux'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jar
+          path: elbaite-chip8/target/elbaite-chip8-*.jar
           if-no-files-found: error

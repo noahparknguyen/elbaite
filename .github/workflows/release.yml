@@ -1,0 +1,117 @@
+# Releases Achroite when a version tag, such as v1.1.0, is pushed. The Packages workflow builds
+# every file, as it does on each push to main but with nothing from the cache. Then one job
+# lists each file's SHA-256 in SHA256SUMS, signs an attestation of where they were built, and
+# drafts the GitHub release with them attached. The draft is checked by hand and published on
+# GitHub, and from then on the release is immutable: its files and its tag can never change.
+#
+# Run by hand from the Actions tab, it rehearses a release of the branch it is run on: a draft
+# named rehearsal-<run number>, never published, and deleted once checked. Nothing about a
+# rehearsal touches a version tag.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Read the code, nothing more, except where the job below needs more.
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    # From this same commit: GitHub takes a ./ workflow from the caller's commit, never from
+    # files in the workspace.
+    uses: ./.github/workflows/packages.yml
+    with:
+      release: true
+
+  release:
+    needs: packages
+    runs-on: ubuntu-24.04
+    permissions:
+      # Drafting the release, with its files.
+      contents: write
+      # Signing the attestation, with a short-lived certificate Sigstore issues to this
+      # workflow alone.
+      id-token: write
+      # Keeping the attestation with the repository, where gh attestation verify finds it.
+      attestations: write
+    steps:
+      # Every file the Packages jobs kept, in one folder.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: release
+          merge-multiple: true
+
+      # The version is the jar's, as in every file name, and a tag has to name that same
+      # version: a tag pushed before the POMs were bumped would otherwise release the old
+      # version under the new tag. Each package carries the runtime of the Java that built it,
+      # which the notes name. The two systems build minutes apart, so they almost always agree;
+      # if a new Java came out in between, they would not, and the release stops.
+      - name: Check the version and the bundled Java
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN: ${{ github.run_number }}
+        run: |
+          jars=(release/elbaite-chip8-*.jar)
+          version=${jars[0]#release/elbaite-chip8-}
+          version=${version%.jar}
+          if [ "$EVENT" = push ]; then
+            tag=$REF_NAME ref=$REF_NAME
+            if [ "$tag" != "v$version" ]; then
+              echo "The tag $tag does not name the version being built, $version." >&2
+              exit 1
+            fi
+          else
+            tag=rehearsal-$RUN ref=$GITHUB_SHA
+          fi
+          java_of() { tr -d '\r' | sed -n 's/^JAVA_VERSION="\(.*\)"$/\1/p'; }
+          linux=$(tar -xzOf "release/elbaite-chip8-$version-linux-x64.tar.gz" \
+            Achroite/lib/runtime/release | java_of)
+          windows=$(unzip -p "release/elbaite-chip8-$version-windows-x64.zip" \
+            Achroite/runtime/release | java_of)
+          echo "Version $version, tag $tag; Java $linux on Linux, $windows on Windows."
+          if [ -z "$linux" ] || [ "$linux" != "$windows" ]; then
+            echo "The two systems' packages carry different Java runtimes." >&2
+            exit 1
+          fi
+          {
+            echo "VERSION=$version"
+            echo "TAG=$tag"
+            echo "REF=$ref"
+            echo "JAVA=$linux"
+          } >> "$GITHUB_ENV"
+
+      # One line per file, as sha256sum -c reads it.
+      - name: List the checksums
+        working-directory: release
+        run: |
+          sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" .
+          cat SHA256SUMS
+
+      # A signed statement of which workflow, at which commit, built each of these exact files,
+      # kept on GitHub and in Sigstore's public log. gh attestation verify checks a download
+      # against it.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+
+      # The notes say what each download is, one line to a paragraph, since GitHub shows every
+      # line break in them. What is new in the version is added to the draft by hand before it
+      # is published.
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          readme=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$REF/README.md
+          cat > "$RUNNER_TEMP/notes.md" <<EOF
+          **Downloads.** For Windows, the installer (\`.exe\`) or the portable \`.zip\`; for Linux, the \`.deb\` or the portable \`.tar.gz\`. Each carries its own Java runtime, Java $JAVA from Eclipse Temurin, so there is nothing else to install. The jar runs anywhere with Java 25, macOS included. The [README]($readme#download) says how to install each one, and how to remove it completely.
+
+          **Checking a download.** \`SHA256SUMS\` lists every file's SHA-256, and every file has a signed attestation of the workflow and commit that built it: [how to check]($readme#checking-a-download).
+          EOF
+          gh release create "$TAG" release/* --draft --target "$GITHUB_SHA" \
+            --title "Achroite $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
+            --repo "$GITHUB_REPOSITORY"

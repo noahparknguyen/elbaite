@@ -46,6 +46,7 @@ libxi
 libxrender
 libxtst
 linefeeds
+linux
 mbc
 mvnd
 mvnw
@@ -72,6 +73,8 @@ schip
 Scotford's
 shasum
 shellcheck
+sigstore
+Sigstore's
 surefire
 temurin
 Timendus's
