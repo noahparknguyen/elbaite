@@ -13,8 +13,9 @@ import java.awt.Font;
  * {@link #refresh()}. Thirteen short lines sixty times a second costs nothing, so
  * there is nothing to keep in sync.
  *
- * <p>It is 13 rows of 53 columns, monospaced, white on black. 53 is the width of a
- * memory line; 13 is the eight register lines, a blank line, and four memory lines.
+ * <p>It is 13 rows of 53 columns, white on black, in the monospaced {@link #font()} at 18 points.
+ * 53 is the width of a memory line; 13 is the eight register lines, a blank line, and four memory
+ * lines.
  *
  * <p>It does not take keyboard focus. A text area normally does, which would take
  * every key away from the frame's key listener, so {@code P}, {@code N} and the
@@ -24,6 +25,7 @@ public final class DebugView extends JTextArea {
 
     private static final int ROWS = 13;
     private static final int COLUMNS = 53;
+    private static final int FONT_SIZE = 18;
     private static final int MEMORY_BYTES = 64;
 
     private final Cpu cpu;
@@ -45,17 +47,16 @@ public final class DebugView extends JTextArea {
     }
 
     /**
-     * Gives a text area the debug view's size and look: 13 rows of 53 columns, monospaced,
-     * white on black, read-only, and never taking keyboard focus. The window uses it for
-     * the text it shows in the view's place when no ROM is loaded, so the window keeps its
-     * size.
+     * Gives a text area the debug view's size and look: 13 rows of 53 columns in {@link #font()},
+     * white on black, read-only, and never taking keyboard focus. The window uses it for the text
+     * it shows in the view's place when no ROM is loaded, so the window keeps its size.
      *
      * @param area the text area to configure
      */
     static void configure(JTextArea area) {
         area.setRows(ROWS);
         area.setColumns(COLUMNS);
-        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+        area.setFont(font());
         area.setBackground(Color.BLACK);
         area.setForeground(Color.WHITE);
         area.setEditable(false);
@@ -65,6 +66,25 @@ public final class DebugView extends JTextArea {
         // window was packed for, and the pixel came off the screen. This area never shows
         // a caret, so it needs no room for one, and its width is its 53 columns, always.
         area.putClientProperty("caretWidth", 0);
+    }
+
+    /**
+     * Returns the debug view's font: Consolas at 18 points where it is installed, as it is on every
+     * Windows, and Java's Monospaced at 18 points everywhere else. On Windows, Monospaced is
+     * Courier New, a thin typewriter face that is hard to read on screen; on Linux it is DejaVu
+     * Sans Mono, which reads well.
+     *
+     * <p>Java gives a font it cannot find the family {@code Dialog} rather than failing, so the
+     * family name is what says whether Consolas is there.
+     *
+     * @return the font, monospaced wherever it runs
+     */
+    static Font font() {
+        Font consolas = new Font("Consolas", Font.PLAIN, FONT_SIZE);
+        if (consolas.getFamily().equals("Consolas")) {
+            return consolas;
+        }
+        return new Font(Font.MONOSPACED, Font.PLAIN, FONT_SIZE);
     }
 
     /**

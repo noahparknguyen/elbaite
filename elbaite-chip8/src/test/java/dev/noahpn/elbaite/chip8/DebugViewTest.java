@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.*;
+import java.awt.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,6 +34,7 @@ class DebugViewTest {
 
         assertEquals(13, area.getRows());
         assertEquals(53, area.getColumns());
+        assertEquals(18, area.getFont().getSize());
         assertFalse(area.isEditable());
         assertFalse(area.isFocusable());
     }
@@ -49,6 +51,16 @@ class DebugViewTest {
         area.setText("0200  60 2A 12 02 00 00 00 00 00 00 00 00 00 00 00 00");
 
         assertEquals(emptyWidth, area.getPreferredSize().width);
+    }
+
+    @Test
+    void fontIsMonospaced() {
+        // Columns of hex only line up if every character is as wide as every other. A Consolas that
+        // was not found would come back as Java's fallback font, which is not.
+        FontMetrics metrics = new JTextArea().getFontMetrics(DebugView.font());
+
+        assertEquals(metrics.charWidth('0'), metrics.charWidth('i'));
+        assertEquals(metrics.charWidth('0'), metrics.charWidth('W'));
     }
 
     @Test
