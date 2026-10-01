@@ -214,11 +214,12 @@ class EmulatorTest {
 
     @Test
     void loadFailureNamesMissingRom() {
-        Path rom = Path.of("roms/nope.ch8");
+        // No directory: Windows would print roms/nope.ch8 as roms\nope.ch8
+        Path rom = Path.of("nope.ch8");
 
         String message = Emulator.loadFailure(rom, new NoSuchFileException(rom.toString()));
 
-        assertEquals("ROM not found: roms/nope.ch8", message);
+        assertEquals("ROM not found: nope.ch8", message);
     }
 
     @Test
