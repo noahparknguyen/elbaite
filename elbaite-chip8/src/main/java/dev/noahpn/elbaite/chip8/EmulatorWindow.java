@@ -17,14 +17,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The window ROMs run in, titled Achroite: a menu bar, the screen, and a {@link DebugView}
- * beside it. Both sit in 32 pixels of black, so a lit pixel at the screen's edge stands
- * clear of the frame and of the grey line between the two.
+ * The window ROMs run in, titled Achroite: a menu bar, the screen, and, when View → Debug view is
+ * ticked, a {@link DebugView} beside it. Both sit in 32 pixels of black, so a lit pixel at the
+ * screen's edge stands clear of the frame and of the grey line between the two.
  *
  * <p>File → Open ROM (Ctrl+O) picks a ROM with a file chooser and runs it in place of whatever was
  * running; File → Exit closes the window. Started without a ROM, the window opens empty, with a
- * hint where the debug view goes. The title names the ROM running, as in
- * {@code Achroite — br8kout.ch8}.
+ * hint on the screen. The title names the ROM running, as in {@code Achroite — br8kout.ch8}.
+ *
+ * <p>View → Debug view (Ctrl+D) shows and hides the debug view. It starts hidden, so the window is
+ * only as wide as the screen and its margin, and fits a small display. Shown, it widens the window
+ * to the right, and the screen stays where it is. With no ROM loaded, it is blank.
  *
  * <p>The {@link QuirksMenu} picks a preset, or switches the six quirks one by one, starting from
  * the preset the window was opened with, and every ROM runs with what it shows. A program picks its
@@ -98,6 +101,7 @@ public final class EmulatorWindow {
         debugPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 1, 0, 0, Color.GRAY),
             BorderFactory.createEmptyBorder(MARGIN, MARGIN, MARGIN, MARGIN)));
+        debugPanel.setVisible(false);
         frame.add(debugPanel, BorderLayout.EAST);
 
         show(null, null);
@@ -229,10 +233,11 @@ public final class EmulatorWindow {
     }
 
     private JMenuBar menuBar() {
+        int shortcut = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+
         JMenuItem open = new JMenuItem("Open ROM…");
         open.setMnemonic(KeyEvent.VK_O);
-        open.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O,
-            Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        open.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, shortcut));
         open.addActionListener(_ -> chooseRom());
 
         JMenuItem exit = new JMenuItem("Exit");
@@ -246,16 +251,33 @@ public final class EmulatorWindow {
         file.addSeparator();
         file.add(exit);
 
+        JCheckBoxMenuItem debug = new JCheckBoxMenuItem("Debug view");
+        debug.setMnemonic(KeyEvent.VK_D);
+        debug.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, shortcut));
+        debug.addActionListener(_ -> showDebugView(debug.isSelected()));
+
+        JMenu view = new JMenu("View");
+        view.setMnemonic(KeyEvent.VK_V);
+        view.add(debug);
+
         JMenuBar bar = new JMenuBar();
         bar.add(file);
+        bar.add(view);
         bar.add(new QuirksMenu(quirks, this::changeQuirks));
         return bar;
     }
 
-    // Shows the given machine, loaded from rom, or the empty screen and the hint when
-    // machine is null. The screen and the side view are replaced, the title follows, and the
-    // machine's clock starts at the next timer firing. The frame, the menus, the keys, the
-    // beeper and the timer stay as they are.
+    // View > Debug view. The window is packed to its new width; its top-left corner, and the screen
+    // with it, stays where it is.
+    private void showDebugView(boolean shown) {
+        debugPanel.setVisible(shown);
+        frame.pack();
+    }
+
+    // Shows the given machine, loaded from rom, or, when machine is null, an empty screen with the
+    // hint on it and a blank side view. The screen and the side view are replaced, the title
+    // follows, and the machine's clock starts at the next timer firing. The frame, the menus, the
+    // keys, the beeper and the timer stay as they are.
     private void show(Machine machine, Path rom) {
         screenPanel.removeAll();
         debugPanel.removeAll();
@@ -267,8 +289,14 @@ public final class EmulatorWindow {
 
         if (machine == null) {
             displayPanel = new DisplayPanel(new Display());
+            displayPanel.setLayout(new GridBagLayout());
+            displayPanel.add(hint());
             debugView = null;
-            debugPanel.add(hint());
+            // Blank, but the view's size: a ROM opened while the view is shown never resizes the
+            // window.
+            JTextArea blank = new JTextArea();
+            DebugView.configure(blank);
+            debugPanel.add(blank);
         } else {
             displayPanel = new DisplayPanel(machine.display());
             debugView = new DebugView(machine.cpu(), machine.memory());
@@ -281,9 +309,15 @@ public final class EmulatorWindow {
         frame.repaint();
     }
 
+    // The hint, centred on the empty screen in the debug view's font. Like the view, it never takes
+    // keyboard focus.
     private static JTextArea hint() {
         JTextArea hint = new JTextArea(NO_ROM_HINT);
-        DebugView.configure(hint);
+        hint.setFont(DebugView.font());
+        hint.setForeground(Color.WHITE);
+        hint.setBackground(Color.BLACK);
+        hint.setEditable(false);
+        hint.setFocusable(false);
         return hint;
     }
 

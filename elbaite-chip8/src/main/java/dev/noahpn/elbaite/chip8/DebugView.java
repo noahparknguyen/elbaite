@@ -48,8 +48,8 @@ public final class DebugView extends JTextArea {
 
     /**
      * Gives a text area the debug view's size and look: 13 rows of 53 columns in {@link #font()},
-     * white on black, read-only, and never taking keyboard focus. The window uses it for the text
-     * it shows in the view's place when no ROM is loaded, so the window keeps its size.
+     * white on black, read-only, and never taking keyboard focus. The window uses it for the blank
+     * area it shows in the view's place when no ROM is loaded, so the window keeps its size.
      *
      * @param area the text area to configure
      */

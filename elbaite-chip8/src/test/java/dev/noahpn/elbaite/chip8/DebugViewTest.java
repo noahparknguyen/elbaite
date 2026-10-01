@@ -26,8 +26,8 @@ class DebugViewTest {
 
     @Test
     void configureSizesAreaAndRefusesFocus() {
-        // The window's hint takes the view's place with no ROM loaded: the same size keeps
-        // the window from resizing, and a text area that took focus would deafen the keys.
+        // A blank area takes the view's place with no ROM loaded: the same size keeps the window
+        // from resizing, and a text area that took focus would deafen the keys.
         JTextArea area = new JTextArea();
 
         DebugView.configure(area);

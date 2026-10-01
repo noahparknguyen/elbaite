@@ -66,8 +66,9 @@ java -jar elbaite-chip8/target/elbaite-chip8-1.0.0.jar [<rom-path>]
 Without a ROM path, the window opens empty. **File → Open ROM** (Ctrl+O) opens one, then or any time after, in
 place of whatever is running. If a ROM can't be loaded, or stops with an error while it runs, a dialogue says why.
 
-The debug view beside the screen shows the registers, the timers, the call stack, and four lines of memory starting at
-the line that holds the program counter, refreshed every frame.
+**View → Debug view** (Ctrl+D) opens the debug view beside the screen, and closes it again. It shows the registers, the
+timers, the call stack, and four lines of memory starting at the line that holds the program counter, refreshed every
+frame. It starts closed, so the window is only as wide as the screen.
 
 **In the terminal:**
 
