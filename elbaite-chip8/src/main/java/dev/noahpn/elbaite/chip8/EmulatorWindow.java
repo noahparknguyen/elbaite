@@ -59,6 +59,9 @@ import java.util.List;
  * timer belong to the window and stay. A machine's clock starts at the first timer firing after it
  * arrives, so it never inherits time that passed before it.
  *
+ * <p>On Windows the window takes Windows' own look: its menus, and a file chooser like every other
+ * program's there. Elsewhere it keeps Swing's own look, Metal, which is the same on every system.
+ *
  * <p>Everything here runs on the event dispatch thread, keys, menus and timer alike, so
  * nothing needs a lock.
  */
@@ -162,6 +165,7 @@ public final class EmulatorWindow {
      * @param rom    the ROM to run first, or {@code null}
      */
     public static void open(Quirks quirks, Path rom) {
+        useWindowsLook();
         EmulatorWindow window = new EmulatorWindow(quirks);
         if (rom != null) {
             window.openRom(rom);
@@ -230,6 +234,21 @@ public final class EmulatorWindow {
      */
     static FileNameExtensionFilter romFilter() {
         return new FileNameExtensionFilter("CHIP-8 ROMs (*.ch8, *.c8)", "ch8", "c8");
+    }
+
+    // A look and feel applies to the components made after it is set, so this comes before the
+    // window is built. Linux's own look, GTK, was never tried, so Linux keeps Metal; if Windows'
+    // look cannot be loaded, so does Windows.
+    private static void useWindowsLook() {
+        if (!System.getProperty("os.name").startsWith("Windows")) {
+            return;
+        }
+
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ReflectiveOperationException | UnsupportedLookAndFeelException e) {
+            IO.println("Windows look unavailable: " + e.getMessage());
+        }
     }
 
     private JMenuBar menuBar() {
