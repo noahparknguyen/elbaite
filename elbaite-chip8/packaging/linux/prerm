@@ -25,8 +25,8 @@ LAUNCHER_AS_SERVICE_SCRIPTS
 
 case "$1" in
     remove|upgrade|deconfigure)
-        # The one change from jpackage's own template, as in postinst: with no desktop, the
-        # menu tool fails, and that must not stop the package being removed.
+        # The one change to what jpackage's own template does, as in postinst: with no
+        # desktop, the menu tool fails, and that must not stop the package being removed.
         set +e
 DESKTOP_COMMANDS_UNINSTALL
         set -e

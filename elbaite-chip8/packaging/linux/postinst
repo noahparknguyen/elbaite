@@ -23,9 +23,9 @@ LAUNCHER_AS_SERVICE_SCRIPTS
 
 case "$1" in
     configure)
-        # The one change from jpackage's own template: the menu entry is for desktops, and
-        # where there is none, as in WSL or on a server, the menu tool has nowhere to put it
-        # and fails. That must not fail the install.
+        # The one change to what jpackage's own template does: the menu entry is for
+        # desktops, and where there is none, as in WSL or on a server, the menu tool has
+        # nowhere to put it and fails. That must not fail the install.
         set +e
 DESKTOP_COMMANDS_INSTALL
         set -e
