@@ -12,8 +12,8 @@
 # The packages land in elbaite-chip8/target/packages, named after the jar, as in
 # elbaite-chip8-1.0.0-windows-x64.exe. Installed, the app is called Achroite.
 #
-# Each system's package resources are in its own folder, linux/ or windows/, and jpackage reads
-# that folder for the installer: it finds the icon there by the app's name, Achroite. The icons
+# Each system's package resources are in its own folder, linux/ or windows/: the icon, named
+# after the app as jpackage expects, and on Linux the install and removal scripts. The icons
 # are the window's own, scaled up by whole pixels so the pixel art stays sharp: Achroite.ico
 # holds 16, 32, 48, 64, 128 and 256 pixels (the 16-pixel drawing at 1 and 3 times, the 32-pixel
 # one at 1, 2, 4 and 8), and Achroite.png is the 256.
@@ -80,10 +80,11 @@ if [ $system = windows ]; then
 
     # Installs for the user alone, so it needs no administrator, into a folder they may
     # change. The upgrade code stays the same in every version, so a newer installer
-    # replaces an older install instead of adding a second one beside it. Built from the app
-    # image, the installer ignores --icon and takes the icon from the resource folder.
+    # replaces an older install instead of adding a second one beside it. The installer file's
+    # own icon comes from --icon alone (jpackage's WinExeBundler), not the resource folder.
     jpackage --type exe "${about[@]}" \
         --app-image "$work/Achroite" \
+        --icon "$resources/$icon" \
         --resource-dir "$resources" \
         --license-file LICENSE \
         --about-url https://github.com/noahparknguyen/elbaite \
@@ -99,9 +100,9 @@ if [ $system = windows ]; then
 else
     tar -czf "$out/$name.tar.gz" -C "$work" Achroite
 
-    # The resource folder gives the package its icon, as on Windows, and its install and
-    # removal scripts: jpackage's own, except that a system with no desktop, and so no menu to
-    # add Achroite to, does not fail them.
+    # The resource folder gives the package its icon, since a .deb built from an app image
+    # ignores --icon, and its install and removal scripts: jpackage's own, except that a system
+    # with no desktop, and so no menu to add Achroite to, does not fail them.
     jpackage --type deb "${about[@]}" \
         --app-image "$work/Achroite" \
         --resource-dir "$resources" \
