@@ -1,19 +1,22 @@
 # Dependabot proposes updates as pull requests, and nothing merges without review: the
 # actions the workflows run, pinned to commits, so a new version is a new commit; and the
 # Maven plugins and JUnit in the POMs. A new version waits a week before it is proposed, so a
-# bad release has time to be caught and pulled first.
+# bad release has time to be caught and pulled first. Once a month, now that Achroite is
+# finished: often enough to keep the build current, without a pull request every week.
+# Security updates are separate and keep no schedule: an alert on a version in use opens a
+# pull request straight away.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 7
 
   - package-ecosystem: maven
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 7
