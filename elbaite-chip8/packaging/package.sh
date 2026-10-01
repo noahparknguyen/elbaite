@@ -80,10 +80,13 @@ cp LICENSE "$work/Achroite/"
 if [ $system = windows ]; then
     (cd "$work" && jar --create --no-manifest --file "../packages/$name.zip" Achroite)
 
-    # Installs for the user alone, so it needs no administrator, into a folder they may
-    # change. The upgrade code stays the same in every version, so a newer installer
-    # replaces an older install instead of adding a second one beside it. The installer file's
-    # own icon comes from --icon alone (jpackage's WinExeBundler), not the resource folder.
+    # Installs for the user alone, so it needs no administrator, always into
+    # %LOCALAPPDATA%\Achroite. There is deliberately no folder chooser: jpackage's uninstaller
+    # deletes the install folder and everything in it, and a chosen folder that already held
+    # the user's files (it only warns, and lets them go ahead) would lose them all. The upgrade
+    # code stays the same in every version, so a newer installer replaces an older install
+    # instead of adding a second one beside it. The installer file's own icon comes from
+    # --icon alone (jpackage's WinExeBundler), not the resource folder.
     jpackage --type exe "${about[@]}" \
         --app-image "$work/Achroite" \
         --icon "$resources/$icon" \
@@ -91,7 +94,6 @@ if [ $system = windows ]; then
         --license-file LICENSE \
         --about-url https://github.com/noahparknguyen/elbaite \
         --win-per-user-install \
-        --win-dir-chooser \
         --win-menu \
         --win-menu-group Achroite \
         --win-shortcut \
