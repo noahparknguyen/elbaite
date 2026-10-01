@@ -12,9 +12,11 @@
 # The packages land in elbaite-chip8/target/packages, named after the jar, as in
 # elbaite-chip8-1.0.0-windows-x64.exe. Installed, the app is called Achroite.
 #
-# The icons are the window's own, scaled up by whole pixels so the pixel art stays sharp:
-# achroite.ico holds 16, 32, 48, 64, 128 and 256 pixels (the 16-pixel drawing at 1 and 3 times,
-# the 32-pixel one at 1, 2, 4 and 8), and achroite.png is the 256.
+# Each system's package resources are in its own folder, linux/ or windows/, and jpackage reads
+# that folder for the installer: it finds the icon there by the app's name, Achroite. The icons
+# are the window's own, scaled up by whole pixels so the pixel art stays sharp: Achroite.ico
+# holds 16, 32, 48, 64, 128 and 256 pixels (the 16-pixel drawing at 1 and 3 times, the 32-pixel
+# one at 1, 2, 4 and 8), and Achroite.png is the 256.
 
 set -euo pipefail
 
@@ -32,10 +34,11 @@ version=${jar##*/"$module"-}
 version=${version%.jar}
 
 case "$(uname -s)" in
-    Linux) system=linux ;;
-    MINGW* | MSYS* | CYGWIN*) system=windows ;;
+    Linux) system=linux icon=Achroite.png ;;
+    MINGW* | MSYS* | CYGWIN*) system=windows icon=Achroite.ico ;;
     *) echo "No packages are built for $(uname -s)." >&2; exit 1 ;;
 esac
+resources=$packaging/$system
 arch=$(uname -m)
 if [ "$arch" = x86_64 ]; then
     arch=x64
@@ -61,13 +64,8 @@ about=(
 # The app image: the launcher, the jar, and a Java runtime cut down to the two modules the
 # emulator uses. jdeps finds java.base and java.desktop, which has Swing, Java Sound and image
 # loading in it.
-if [ $system = windows ]; then
-    icon=$packaging/achroite.ico
-else
-    icon=$packaging/achroite.png
-fi
 jpackage --type app-image "${about[@]}" \
-    --icon "$icon" \
+    --icon "$resources/$icon" \
     --input "$input" \
     --main-jar "${jar##*/}" \
     --add-modules java.base,java.desktop \
@@ -82,9 +80,11 @@ if [ $system = windows ]; then
 
     # Installs for the user alone, so it needs no administrator, into a folder they may
     # change. The upgrade code stays the same in every version, so a newer installer
-    # replaces an older install instead of adding a second one beside it.
+    # replaces an older install instead of adding a second one beside it. Built from the app
+    # image, the installer ignores --icon and takes the icon from the resource folder.
     jpackage --type exe "${about[@]}" \
         --app-image "$work/Achroite" \
+        --resource-dir "$resources" \
         --license-file LICENSE \
         --about-url https://github.com/noahparknguyen/elbaite \
         --win-per-user-install \
@@ -99,11 +99,12 @@ if [ $system = windows ]; then
 else
     tar -czf "$out/$name.tar.gz" -C "$work" Achroite
 
-    # linux/ holds the package's install and removal scripts: jpackage's own, except that a
-    # system with no desktop, and so no menu to add Achroite to, does not fail them.
+    # The resource folder gives the package its icon, as on Windows, and its install and
+    # removal scripts: jpackage's own, except that a system with no desktop, and so no menu to
+    # add Achroite to, does not fail them.
     jpackage --type deb "${about[@]}" \
         --app-image "$work/Achroite" \
-        --resource-dir "$packaging/linux" \
+        --resource-dir "$resources" \
         --license-file LICENSE \
         --about-url https://github.com/noahparknguyen/elbaite \
         --linux-package-name achroite \
