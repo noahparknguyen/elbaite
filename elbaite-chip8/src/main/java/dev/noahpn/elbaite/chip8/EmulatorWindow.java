@@ -61,7 +61,7 @@ import java.util.List;
  * arrives, so it never inherits time that passed before it.
  *
  * <p>On Windows the window takes Windows' own look: its menus, and a file chooser like every other
- * program's there. Elsewhere it keeps Swing's own look, Metal, which is the same on every system.
+ * program's there. Elsewhere, it keeps Swing's own look, Metal, which is the same on every system.
  * The system decides where the window opens.
  *
  * <p>Everything here runs on the event dispatch thread, keys, menus and timer alike, so
