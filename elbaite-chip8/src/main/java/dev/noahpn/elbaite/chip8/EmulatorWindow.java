@@ -27,7 +27,8 @@ import java.util.List;
  *
  * <p>View → Debug view (Ctrl+D) shows and hides the debug view. It starts hidden, so the window is
  * only as wide as the screen and its margin, and fits a small display. Shown, it widens the window
- * to the right, and the screen stays where it is. With no ROM loaded, it is blank.
+ * to the right, and the screen stays where it is, unless the wider window would run off the
+ * display: then the window moves left just enough to fit. With no ROM loaded, the view is blank.
  *
  * <p>The {@link QuirksMenu} picks a preset, or switches the six quirks one by one, starting from
  * the preset the window was opened with, and every ROM runs with what it shows. A program picks its
@@ -61,6 +62,7 @@ import java.util.List;
  *
  * <p>On Windows the window takes Windows' own look: its menus, and a file chooser like every other
  * program's there. Elsewhere it keeps Swing's own look, Metal, which is the same on every system.
+ * The system decides where the window opens.
  *
  * <p>Everything here runs on the event dispatch thread, keys, menus and timer alike, so
  * nothing needs a lock.
@@ -149,6 +151,9 @@ public final class EmulatorWindow {
         });
 
         frame.setIconImages(icons());
+        // Where a new window opens is the system's call, as it is for every other program there,
+        // rather than Java's default of the screen's top-left corner.
+        frame.setLocationByPlatform(true);
         frame.setVisible(true);
 
         beeper = createBeeper();
@@ -287,10 +292,27 @@ public final class EmulatorWindow {
     }
 
     // View > Debug view. The window is packed to its new width; its top-left corner, and the screen
-    // with it, stays where it is.
+    // with it, stays where it is unless the wider window would run off the screen.
     private void showDebugView(boolean shown) {
         debugPanel.setVisible(shown);
         frame.pack();
+        keepOnScreen();
+    }
+
+    // The system may have opened the window anywhere, so the debug view can push its right edge
+    // past the screen's, or past a taskbar there. It moves left just enough to fit, and no further
+    // than the screen's left edge.
+    private void keepOnScreen() {
+        GraphicsConfiguration screen = frame.getGraphicsConfiguration();
+        Rectangle bounds = screen.getBounds();
+        Insets taskbars = Toolkit.getDefaultToolkit().getScreenInsets(screen);
+        int left = bounds.x + taskbars.left;
+        int right = bounds.x + bounds.width - taskbars.right;
+
+        int overflow = frame.getX() + frame.getWidth() - right;
+        if (overflow > 0) {
+            frame.setLocation(Math.max(left, frame.getX() - overflow), frame.getY());
+        }
     }
 
     // Shows the given machine, loaded from rom, or, when machine is null, an empty screen with the
