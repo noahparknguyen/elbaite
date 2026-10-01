@@ -17,6 +17,7 @@ set -e
 # the debian-policy package
 
 
+# shellcheck disable=SC2034 # read by the code jpackage puts in place of the placeholders
 package_type=deb
 COMMON_SCRIPTS
 DESKTOP_SCRIPTS

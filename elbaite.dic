@@ -4,6 +4,7 @@ annn
 apu
 bcd
 bnnn
+conflictor's
 cosmac
 cxnn
 decrementing
@@ -14,10 +15,12 @@ gameboy
 gitignored
 hram
 indicolite
+installdeb
 javadoc
 jdeps
 jlink
 jpackage
+jpackage's
 jupiter
 junit
 kout
@@ -31,12 +34,15 @@ octo
 opcode
 opcodes
 paraiba
+postinst
 ppu
+prerm
 roms
 rubellite
 scanline
 schip
 Scotford's
+shellcheck
 surefire
 temurin
 Timendus's
