@@ -39,9 +39,16 @@ jobs:
           java-version: 25
           cache: maven
 
-      # The tests run on each system, so a failure only Windows shows turns up here.
+      # Through the Maven Wrapper, as anyone building from source runs it: mvnw on Linux,
+      # mvnw.cmd on Windows. The tests run on each system, so a failure only Windows shows
+      # turns up here.
       - name: Test and package the jar
-        run: mvn --batch-mode verify
+        if: runner.os == 'Linux'
+        run: ./mvnw --batch-mode verify
+
+      - name: Test and package the jar
+        if: runner.os == 'Windows'
+        run: ./mvnw.cmd --batch-mode verify
 
       # Git Bash on Windows, so one script serves both. The Windows installer needs WiX 3,
       # which the windows-2025 image has.

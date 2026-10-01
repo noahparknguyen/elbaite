@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Builds Achroite's native packages for the system this runs on, from the jar `mvn package`
-# made: on Windows an installer (.exe) and a portable .zip, on Linux a .deb and a portable
-# .tar.gz. Each carries a Java runtime of its own, so nothing else needs installing. jpackage
-# cannot build for another system, so CI runs this once on each (packages.yml).
+# Builds Achroite's native packages for the system this runs on, from the jar the build made:
+# on Windows an installer (.exe) and a portable .zip, on Linux a .deb and a portable .tar.gz.
+# Each carries a Java runtime of its own, so nothing else needs installing. jpackage cannot
+# build for another system, so CI runs this once on each (packages.yml).
 #
-# From the repository root, after `mvn package`:
+# From the repository root, after `./mvnw package`:
 #
 #     bash elbaite-chip8/packaging/package.sh
 #
@@ -26,7 +26,7 @@ target=$module/target
 
 jars=("$target/$module"-*.jar)
 if [ ${#jars[@]} -ne 1 ] || [ ! -f "${jars[0]}" ]; then
-    echo "Expected one $module jar in $target: run mvn package first." >&2
+    echo "Expected one $module jar in $target: run ./mvnw package first." >&2
     exit 1
 fi
 jar=${jars[0]}
