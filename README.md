@@ -26,7 +26,7 @@ stopped to ask how they work. So I started reading, and I realized pretty quickl
 reach for my current skills.
 
 More reading led me to CHIP-8, a small virtual machine from 1977 that ran simple games on hobby computers. It has 35
-instructions, sixteen one-byte registers and a 64 by 32 screen of one bit per pixel, which makes it tiny next to the
+instructions, sixteen one-byte registers, and a 64 by 32 screen of one bit per pixel, which makes it tiny next to the
 Game Boy. That made it the perfect warm-up: a whole machine small enough to finish, and a way to build the skills the
 Game Boy is going to need.
 
@@ -38,7 +38,7 @@ Game Boy is going to need.
 - **Sound:** a 441 Hz tone for as long as the sound timer runs.
 - **Quirks:** where CHIP-8 interpreters disagree, a preset picks whose behaviour to follow: the original VIP (the
   default), SUPER-CHIP, or Octo. In the window, a menu switches presets, or each of the six quirks on its own.
-- **A debugger:** pause, step one instruction at a time, and a live view of the registers, timers, stack and the memory
+- **A debugger:** pause, step one instruction at a time, and a live view of the registers, timers, stack, and the memory
   at the program counter.
 - **A terminal mode** that runs a fixed number of steps and prints the screen and registers, for checking a ROM's
   output exactly.
@@ -194,7 +194,7 @@ A S D F          7 8 9 E
 Z X C V          A 0 B F
 ```
 
-`P` pauses and resumes. While paused, `N` runs one instruction and prints the address it ran from, the opcode and the
+`P` pauses and resumes. While paused, `N` runs one instruction and prints the address it ran from, the opcode, and the
 registers to the terminal. Time stands still while paused: the timers don't tick and the tone stops.
 
 ## ROMs
