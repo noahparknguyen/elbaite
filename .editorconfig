@@ -10,13 +10,30 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 max_line_length = 100
-# Long statements are wrapped by hand at 100. keep_line_breaks (IntelliJ's default, pinned
-# here) keeps those breaks through a reformat, provided the IDE option "Reformat again to
-# remove custom line breaks" stays off. wrap_on_typing is off because, when typing runs
-# past the margin inside a string literal, it splits the literal into a concatenation.
+# Reformat wraps at 100, and typing never does. wrap_on_typing is off because, when typing
+# runs past the margin inside a string literal, it splits the literal into a concatenation.
 # It has no ij_java_ form: IntelliJ only reads the general ij_wrap_on_typing.
-ij_java_keep_line_breaks = true
 ij_wrap_on_typing = false
+# Line breaks written by hand survive a reformat (IntelliJ's default, pinned here), provided
+# the IDE option "Reformat again to remove custom line breaks" stays off.
+ij_java_keep_line_breaks = true
+# A list, chain, or ternary that doesn't fit puts each part on its own line ("Chop down if
+# long"), so adding an item changes one line of a diff instead of reflowing its neighbours.
+ij_java_method_parameters_wrap = on_every_item
+ij_java_call_parameters_wrap = on_every_item
+ij_java_record_components_wrap = on_every_item
+ij_java_resource_list_wrap = on_every_item
+ij_java_method_call_chain_wrap = on_every_item
+ij_java_ternary_operation_wrap = on_every_item
+# Where packing reads better, as many items as fit go on each line ("Wrap if long").
+ij_java_binary_operation_wrap = normal
+ij_java_extends_list_wrap = normal
+ij_java_throws_list_wrap = normal
+ij_java_array_initializer_wrap = normal
+# Javadoc is filled on reformat: a paragraph's lines are rejoined and rewrapped at 100.
+# Line comments are only wrapped, never rejoined.
+ij_java_wrap_comments = true
+ij_java_doc_preserve_line_breaks = false
 
 [*.xml]
 indent_style = space

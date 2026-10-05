@@ -24,8 +24,8 @@ public final class KeyMap {
      * Returns the CHIP-8 keypad key for a {@link KeyEvent} key code.
      *
      * @param keyCode a {@code KeyEvent.VK_*} key code
-     * @return the keypad key, {@code 0x0} through {@code 0xF}, or {@code -1} if the
-     * key is not on the keypad
+     * @return the keypad key, {@code 0x0} through {@code 0xF}, or {@code -1} if the key is not on
+     * the keypad
      */
     public static int keypadKey(int keyCode) {
         return switch (keyCode) {

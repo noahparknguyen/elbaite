@@ -3,12 +3,12 @@ package dev.noahpn.elbaite.chip8;
 import java.nio.file.Path;
 
 /**
- * What the command line asks the emulator to do: show its version, run a ROM in the
- * terminal, or open the window.
+ * What the command line asks the emulator to do: show its version, run a ROM in the terminal, or
+ * open the window.
  *
  * <p>{@link #parse(String[])} reads {@code Emulator [--quirks vip|schip|octo] [<rom-path>
- * [steps]]}, or {@code --version} on its own. The three answers carry different things, so
- * each is a record of its own, and {@code main} switches on which one it got.
+ * [steps]]}, or {@code --version} on its own. The three answers carry different things, so each is
+ * a record of its own, and {@code main} switches on which one it got.
  */
 public sealed interface Command {
 
@@ -43,16 +43,15 @@ public sealed interface Command {
     }
 
     /**
-     * Reads a command line. {@code --quirks} and its preset name may only come first;
-     * without them the preset is {@link Quirks#VIP}. With no ROM path, the window opens
-     * empty. A step count needs a ROM before it and must be a whole number of at least
-     * {@code 1}.
+     * Reads a command line. {@code --quirks} and its preset name may only come first; without them
+     * the preset is {@link Quirks#VIP}. With no ROM path, the window opens empty. A step count
+     * needs a ROM before it and must be a whole number of at least {@code 1}.
      *
      * @param args the arguments given to {@code main}
      * @return what they ask for
-     * @throws IllegalArgumentException if they do not follow the usage line: an unknown
-     *                                  preset, {@code --quirks} without one or anywhere
-     *                                  but first, a bad step count, or too many arguments
+     * @throws IllegalArgumentException if they do not follow the usage line: an unknown preset,
+     *                                  {@code --quirks} without one or anywhere but first, a bad
+     *                                  step count, or too many arguments
      */
     static Command parse(String[] args) {
         if (args.length == 1 && args[0].equals("--version")) {

@@ -5,21 +5,20 @@ import java.awt.*;
 import java.awt.Font;
 
 /**
- * A Swing text area that shows the CPU's registers and timers beside the screen,
- * with the four lines of memory around the program counter underneath.
+ * A Swing text area that shows the CPU's registers and timers beside the screen, with the four
+ * lines of memory around the program counter underneath.
  *
  * <p>It is a view, not a model: it holds the {@link Cpu} and {@link Memory} it reads,
- * keeps no copy of anything, and rebuilds its text from scratch on each
- * {@link #refresh()}. Thirteen short lines sixty times a second costs nothing, so
- * there is nothing to keep in sync.
+ * keeps no copy of anything, and rebuilds its text from scratch on each {@link #refresh()}.
+ * Thirteen short lines sixty times a second costs nothing, so there is nothing to keep in sync.
  *
  * <p>It is 13 rows of 53 columns, white on black, in the monospaced {@link #font()} at 18 points.
  * 53 is the width of a memory line; 13 is the eight register lines, a blank line, and four memory
  * lines.
  *
  * <p>It does not take keyboard focus. A text area normally does, which would take
- * every key away from the frame's key listener, so {@code P}, {@code N} and the
- * whole keypad would go dead the moment the window opened.
+ * every key away from the frame's key listener, so {@code P}, {@code N} and the whole keypad would
+ * go dead the moment the window opened.
  */
 public final class DebugView extends JTextArea {
 
@@ -35,8 +34,7 @@ public final class DebugView extends JTextArea {
      * Creates a view that reads the given CPU and memory. It starts empty; the first
      * {@link #refresh()} fills it.
      *
-     * @param cpu    the CPU to read registers and the program counter from, not
-     *               {@code null}
+     * @param cpu    the CPU to read registers and the program counter from, not {@code null}
      * @param memory the memory to read around the program counter, not {@code null}
      */
     public DebugView(Cpu cpu, Memory memory) {
@@ -88,13 +86,13 @@ public final class DebugView extends JTextArea {
     }
 
     /**
-     * Rebuilds the view's text: the CPU's register dump, a blank line, then the four
-     * lines of memory around the program counter.
+     * Rebuilds the view's text: the CPU's register dump, a blank line, then the four lines of
+     * memory around the program counter.
      *
      * <p>The memory starts at the line that holds the counter, its last hex digit
-     * made {@code 0}, and runs for 64 bytes, or fewer when that would pass
-     * {@code 0xFFF}. {@link Memory#dump} throws past the end of the address space,
-     * so the length is clamped to what is left.
+     * made {@code 0}, and runs for 64 bytes, or fewer when that would pass {@code 0xFFF}.
+     * {@link Memory#dump} throws past the end of the address space, so the length is clamped to
+     * what is left.
      */
     public void refresh() {
         int start = cpu.getProgramCounter() & ~0xF;

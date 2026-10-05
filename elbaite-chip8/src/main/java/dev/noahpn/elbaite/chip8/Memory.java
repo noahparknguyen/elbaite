@@ -6,16 +6,16 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 /**
- * The CHIP-8 address space: 4 KB of byte-addressable memory holding the font, the loaded
- * program, and everything the running machine reads or writes.
+ * The CHIP-8 address space: 4 KB of byte-addressable memory holding the font, the loaded program,
+ * and everything the running machine reads or writes.
  *
  * <p>Values are stored in a {@code byte[]}, but the byte-ness stays inside this class.
- * {@link #read} hands back {@code 0} to {@code 255}, so no caller ever deals with a
- * sign-extended byte.
+ * {@link #read} hands back {@code 0} to {@code 255}, so no caller ever deals with a sign-extended
+ * byte.
  *
  * <p>This class fails loudly rather than quietly doing something plausible. An address
- * outside {@code 0x000} to {@code 0xFFF} and a value outside {@code 0} to {@code 255}
- * both throw, instead of wrapping or truncating.
+ * outside {@code 0x000} to {@code 0xFFF} and a value outside {@code 0} to {@code 255} both throw,
+ * instead of wrapping or truncating.
  */
 public final class Memory {
 
@@ -79,8 +79,8 @@ public final class Memory {
      *
      * @param path the ROM file to read
      * @return the number of bytes loaded
-     * @throws IOException              if the file cannot be read, including when it
-     *                                  does not exist
+     * @throws IOException              if the file cannot be read, including when it does not
+     *                                  exist
      * @throws IllegalArgumentException if the file is too large to fit above
      *                                  {@link #PROGRAM_START}
      */
@@ -116,8 +116,7 @@ public final class Memory {
      * @param value   the value to store, {@code 0} to {@code 255}
      * @throws IndexOutOfBoundsException if {@code address} is outside {@code 0x000} to
      *                                   {@code 0xFFF}
-     * @throws IllegalArgumentException  if {@code value} is outside {@code 0} to
-     *                                   {@code 255}
+     * @throws IllegalArgumentException  if {@code value} is outside {@code 0} to {@code 255}
      */
     public void write(int address, int value) {
         checkAddress(address);
@@ -140,17 +139,17 @@ public final class Memory {
      * Returns a hex dump of a region of memory as text.
      *
      * <p>Each line is the address of its first byte as four hex digits, then up to
-     * sixteen byte values as two hex digits each. The last line is short if
-     * {@code length} is not a multiple of sixteen, and has no trailing space. Every
-     * line ends with a line separator, the last included.
+     * sixteen byte values as two hex digits each. The last line is short if {@code length} is not a
+     * multiple of sixteen, and has no trailing space. Every line ends with a line separator, the
+     * last included.
      *
      * <p>This returns the text; it does not print it.
      *
      * @param start  the address of the first byte to dump
      * @param length how many bytes to dump
      * @return the hex dump
-     * @throws IndexOutOfBoundsException if any address in the region is outside
-     *                                   {@code 0x000} to {@code 0xFFF}
+     * @throws IndexOutOfBoundsException if any address in the region is outside {@code 0x000} to
+     *                                   {@code 0xFFF}
      */
     public String dump(int start, int length) {
         StringBuilder sb = new StringBuilder();

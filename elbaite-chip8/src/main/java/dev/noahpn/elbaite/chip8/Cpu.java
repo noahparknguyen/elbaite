@@ -4,14 +4,13 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntSupplier;
 
 /**
- * The CHIP-8 processor: its registers, timers and call stack, and the fetch-decode-execute
- * cycle that runs instructions.
+ * The CHIP-8 processor: its registers, timers and call stack, and the fetch-decode-execute cycle
+ * that runs instructions.
  *
  * <p>It holds sixteen general registers, the index register, the program counter, and a
- * sixteen-entry call stack. The first three are different widths and each is guarded
- * separately. A general register holds one byte, the index register holds sixteen bits,
- * and the program counter holds a twelve-bit address. Nothing about {@code int} enforces
- * any of that.
+ * sixteen-entry call stack. The first three are different widths and each is guarded separately. A
+ * general register holds one byte, the index register holds sixteen bits, and the program counter
+ * holds a twelve-bit address. Nothing about {@code int} enforces any of that.
  *
  * <p>Beside them sit two one-byte countdown timers, the delay timer and the sound timer.
  * Each falls by one on every {@link #tick()} until it reaches zero, where it stays.
@@ -27,12 +26,12 @@ import java.util.function.IntSupplier;
  * with. It reads five of the six; the sixth, display wait, belongs to the {@link Emulator}.
  *
  * <p>A new instance has every general register zeroed, the index register at
- * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, both timers at
- * zero, and an empty stack.
+ * {@code 0x0000}, the program counter at {@link Memory#PROGRAM_START}, both timers at zero, and an
+ * empty stack.
  *
  * <p>Like {@link Memory}, the public setters reject an out-of-range value rather than
- * truncating or wrapping it. Instructions follow the hardware instead: {@code 7XNN} wraps
- * its sum at eight bits, because that is what the original machine did.
+ * truncating or wrapping it. Instructions follow the hardware instead: {@code 7XNN} wraps its sum
+ * at eight bits, because that is what the original machine did.
  */
 public final class Cpu {
 
@@ -62,8 +61,8 @@ public final class Cpu {
 
     /**
      * Creates a CPU that reads instructions and data from the given memory, draws to the given
-     * display, reads keys from the given keypad, uses the {@link Quirks#VIP} preset, and takes
-     * its random bytes from {@link ThreadLocalRandom}.
+     * display, reads keys from the given keypad, uses the {@link Quirks#VIP} preset, and takes its
+     * random bytes from {@link ThreadLocalRandom}.
      *
      * @param memory  the memory this CPU fetches from, not {@code null}
      * @param display the display this CPU draws to, not {@code null}
@@ -74,8 +73,7 @@ public final class Cpu {
     }
 
     /**
-     * Creates a CPU with the given quirks, taking its random bytes from
-     * {@link ThreadLocalRandom}.
+     * Creates a CPU with the given quirks, taking its random bytes from {@link ThreadLocalRandom}.
      *
      * @param memory  the memory this CPU fetches from, not {@code null}
      * @param display the display this CPU draws to, not {@code null}
@@ -90,8 +88,8 @@ public final class Cpu {
      * Creates a CPU with the given quirks and the given source of random bytes.
      *
      * <p>This is the constructor a test uses to make {@code CXNN} predictable. Each call
-     * to {@code randomByte.getAsInt()} must return a value from {@code 0} to {@code 255},
-     * and {@code CXNN} calls it once per instruction.
+     * to {@code randomByte.getAsInt()} must return a value from {@code 0} to {@code 255}, and
+     * {@code CXNN} calls it once per instruction.
      *
      * @param memory     the memory this CPU fetches from, not {@code null}
      * @param display    the display this CPU draws to, not {@code null}
@@ -111,11 +109,9 @@ public final class Cpu {
     /**
      * Returns the value held in one of the sixteen general registers.
      *
-     * @param register which register, {@code 0} for {@code V0} through {@code 15} for
-     *                 {@code VF}
+     * @param register which register, {@code 0} for {@code V0} through {@code 15} for {@code VF}
      * @return the register value, {@code 0} to {@code 255}
-     * @throws IndexOutOfBoundsException if {@code register} is outside {@code 0} to
-     *                                   {@code 15}
+     * @throws IndexOutOfBoundsException if {@code register} is outside {@code 0} to {@code 15}
      */
     public int readRegister(int register) {
         checkRegister(register);
@@ -131,13 +127,10 @@ public final class Cpu {
      *
      * <p>The value must fit in a byte, and this method rejects rather than truncates.
      *
-     * @param register which register, {@code 0} for {@code V0} through {@code 15} for
-     *                 {@code VF}
+     * @param register which register, {@code 0} for {@code V0} through {@code 15} for {@code VF}
      * @param value    the value to store, {@code 0} to {@code 255}
-     * @throws IndexOutOfBoundsException if {@code register} is outside {@code 0} to
-     *                                   {@code 15}
-     * @throws IllegalArgumentException  if {@code value} is outside {@code 0} to
-     *                                   {@code 255}
+     * @throws IndexOutOfBoundsException if {@code register} is outside {@code 0} to {@code 15}
+     * @throws IllegalArgumentException  if {@code value} is outside {@code 0} to {@code 255}
      */
     public void writeRegister(int register, int value) {
         checkRegister(register);
@@ -162,8 +155,8 @@ public final class Cpu {
      * Sets the index register.
      *
      * <p>It is sixteen bits wide rather than twelve, so it may legally hold a value
-     * above the {@code 0xFFF} top of the address space. That is why an out-of-range
-     * value here is an argument error rather than an addressing one.
+     * above the {@code 0xFFF} top of the address space. That is why an out-of-range value here is
+     * an argument error rather than an addressing one.
      *
      * @param value the value to store, {@code 0x0000} to {@code 0xFFFF}
      * @throws IllegalArgumentException if {@code value} is outside {@code 0x0000} to
@@ -208,9 +201,9 @@ public final class Cpu {
      *
      * <p>Two, because every CHIP-8 instruction is exactly two bytes.
      *
-     * @throws IndexOutOfBoundsException if the program counter is already at
-     *                                   {@code 0xFFE} or {@code 0xFFF}, where advancing
-     *                                   would leave the address space
+     * @throws IndexOutOfBoundsException if the program counter is already at {@code 0xFFE} or
+     *                                   {@code 0xFFF}, where advancing would leave the address
+     *                                   space
      */
     public void advanceProgramCounter() {
         if (programCounter > ADDRESS_MAX - 2) {
@@ -241,8 +234,7 @@ public final class Cpu {
      * progress.
      *
      * @param value the value to store, {@code 0x00} to {@code 0xFF}
-     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to
-     *                                  {@code 0xFF}
+     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to {@code 0xFF}
      */
     public void setDelayTimer(int value) {
         if (value < 0 || value > TIMER_MAX) {
@@ -257,8 +249,8 @@ public final class Cpu {
      * Returns the sound timer.
      *
      * <p>No instruction reads this timer: it is meant to be heard, not read. A tone plays
-     * for as long as the value is above zero; in the window, {@link Emulator#isSounding()}
-     * checks it once a frame and a {@link Beeper} plays it. The value falls by one on each
+     * for as long as the value is above zero; in the window, {@link Emulator#isSounding()} checks
+     * it once a frame and a {@link Beeper} plays it. The value falls by one on each
      * {@link #tick()}, and stops at zero.
      *
      * @return the sound timer, {@code 0x00} to {@code 0xFF}
@@ -274,8 +266,7 @@ public final class Cpu {
      * progress.
      *
      * @param value the value to store, {@code 0x00} to {@code 0xFF}
-     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to
-     *                                  {@code 0xFF}
+     * @throws IllegalArgumentException if {@code value} is outside {@code 0x00} to {@code 0xFF}
      */
     public void setSoundTimer(int value) {
         if (value < 0 || value > TIMER_MAX) {
@@ -287,14 +278,14 @@ public final class Cpu {
     }
 
     /**
-     * Returns the whole register file as text: the sixteen general registers four to
-     * a line, then the index register and the program counter on lines of their own,
-     * then the two timers side by side on one line, then the call stack on the last
-     * line, oldest entry first, or {@code -} when it is empty.
+     * Returns the whole register file as text: the sixteen general registers four to a line, then
+     * the index register and the program counter on lines of their own, then the two timers side by
+     * side on one line, then the call stack on the last line, oldest entry first, or {@code -} when
+     * it is empty.
      *
      * <p>Values are hex, two digits for a general register and a timer, and four for
-     * {@code I}, {@code PC} and each stack entry. Every line ends with a line separator,
-     * the last included, so the text prints as it is with {@code IO.print}.
+     * {@code I}, {@code PC} and each stack entry. Every line ends with a line separator, the last
+     * included, so the text prints as it is with {@code IO.print}.
      *
      * <p>This returns the text; it does not print it. The terminal harness prints it,
      * and the window shows it in a {@link DebugView}.
@@ -338,18 +329,18 @@ public final class Cpu {
     }
 
     /**
-     * Reads the two bytes at the program counter as one instruction, high byte first, and
-     * advances the program counter by two before returning.
+     * Reads the two bytes at the program counter as one instruction, high byte first, and advances
+     * the program counter by two before returning.
      *
      * <p>Advancing is part of fetching, not something a caller does afterwards. It happens
-     * before the instruction runs so that a jump, which writes the program counter itself,
-     * lands where it means to instead of being undone by a later increment. Callers must not
-     * also advance, or every instruction will skip the next one.
+     * before the instruction runs so that a jump, which writes the program counter itself, lands
+     * where it means to instead of being undone by a later increment. Callers must not also
+     * advance, or every instruction will skip the next one.
      *
      * @return the instruction at the old program counter
      * @throws IndexOutOfBoundsException if the program counter is at {@code 0xFFE} or
-     *                                   {@code 0xFFF}, where the second byte or the advance
-     *                                   would leave the address space
+     *                                   {@code 0xFFF}, where the second byte or the advance would
+     *                                   leave the address space
      */
     public Opcode fetch() {
         int high = memory.read(programCounter);
@@ -362,23 +353,19 @@ public final class Cpu {
      * Runs one decoded instruction.
      *
      * <p>Dispatches on the first nibble of the opcode, which selects the instruction
-     * family, and hands off to the matching handler. Every CHIP-8 instruction is handled
-     * except {@code 0NNN}, which called native machine code on the VIP and is not
-     * implemented here.
+     * family, and hands off to the matching handler. Every CHIP-8 instruction is handled except
+     * {@code 0NNN}, which called native machine code on the VIP and is not implemented here.
      *
      * @param opcode the instruction to run
-     * @throws IndexOutOfBoundsException     if the instruction reaches outside memory,
-     *                                       such as {@code BNNN} jumping past
-     *                                       {@code 0xFFF}, {@code DXYN} reading a
-     *                                       sprite byte past it, {@code FX33} with
-     *                                       {@code I + 2} past {@code 0xFFF}, or
-     *                                       {@code FX55} or {@code FX65} with
-     *                                       {@code I + X} past {@code 0xFFF}
-     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not
-     *                                       defined by CHIP-8 at all
-     * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls
-     *                                       already nested, or {@code 00EE} returns with
-     *                                       none
+     * @throws IndexOutOfBoundsException     if the instruction reaches outside memory, such as
+     *                                       {@code BNNN} jumping past {@code 0xFFF}, {@code DXYN}
+     *                                       reading a sprite byte past it, {@code FX33} with
+     *                                       {@code I + 2} past {@code 0xFFF}, or {@code FX55} or
+     *                                       {@code FX65} with {@code I + X} past {@code 0xFFF}
+     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not defined by
+     *                                       CHIP-8 at all
+     * @throws IllegalStateException         if {@code 2NNN} calls with sixteen calls already
+     *                                       nested, or {@code 00EE} returns with none
      */
     public void execute(Opcode opcode) {
         switch (opcode.high()) {
@@ -403,28 +390,25 @@ public final class Cpu {
     }
 
     /**
-     * Runs one full fetch-decode-execute cycle: fetches the instruction at the
-     * program counter, executes it, and returns the opcode that ran.
+     * Runs one full fetch-decode-execute cycle: fetches the instruction at the program counter,
+     * executes it, and returns the opcode that ran.
      *
      * <p>Fetching advances the program counter by two, so by the time the
-     * instruction executes, the counter already points at the next instruction
-     * in sequence. A jump overwrites it from there.
+     * instruction executes, the counter already points at the next instruction in sequence. A jump
+     * overwrites it from there.
      *
      * @return the opcode that was fetched and executed
-     * @throws IndexOutOfBoundsException     if the program counter is too close to
-     *                                       the top of the address space to fetch,
-     *                                       or the instruction reaches outside
-     *                                       memory, such as {@code BNNN} jumping past
-     *                                       {@code 0xFFF}, {@code DXYN} reading a
-     *                                       sprite byte past it, {@code FX33} with
-     *                                       {@code I + 2} past {@code 0xFFF}, or
-     *                                       {@code FX55} or {@code FX65} with
-     *                                       {@code I + X} past {@code 0xFFF}
-     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not
-     *                                       defined by CHIP-8 at all
-     * @throws IllegalStateException         if the instruction is {@code 2NNN} with
-     *                                       sixteen calls already nested, or
-     *                                       {@code 00EE} with none
+     * @throws IndexOutOfBoundsException     if the program counter is too close to the top of the
+     *                                       address space to fetch, or the instruction reaches
+     *                                       outside memory, such as {@code BNNN} jumping past
+     *                                       {@code 0xFFF}, {@code DXYN} reading a sprite byte past
+     *                                       it, {@code FX33} with {@code I + 2} past {@code 0xFFF},
+     *                                       or {@code FX55} or {@code FX65} with {@code I + X} past
+     *                                       {@code 0xFFF}
+     * @throws UnsupportedOperationException if the opcode is {@code 0NNN}, or is not defined by
+     *                                       CHIP-8 at all
+     * @throws IllegalStateException         if the instruction is {@code 2NNN} with sixteen calls
+     *                                       already nested, or {@code 00EE} with none
      */
     public Opcode step() {
         Opcode opcode = fetch();
@@ -433,8 +417,8 @@ public final class Cpu {
     }
 
     /**
-     * Advances emulated time by one tick, a sixtieth of a second: each timer above zero
-     * falls by one. A timer already at zero stays at zero; it never wraps.
+     * Advances emulated time by one tick, a sixtieth of a second: each timer above zero falls by
+     * one. A timer already at zero stays at zero; it never wraps.
      *
      * <p>This is separate from {@link #step()} because the timers run on the clock, not
      * on instructions. Whoever owns the clock calls this; {@code step} never does.

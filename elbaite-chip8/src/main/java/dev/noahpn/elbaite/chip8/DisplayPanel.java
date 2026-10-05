@@ -4,16 +4,15 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * A Swing panel that draws a {@link Display} as a grid of squares, one per CHIP-8
- * pixel.
+ * A Swing panel that draws a {@link Display} as a grid of squares, one per CHIP-8 pixel.
  *
  * <p>Each CHIP-8 pixel becomes a 15 by 15 screen-pixel square, so the panel asks for
  * 960 by 480. A lit pixel is white; an unlit pixel is the black background.
  *
  * <p>The panel holds the display and reads it every time it paints: it keeps no copy
- * of the pixels. The display stays the one place the picture lives, so the window and
- * the emulator cannot drift apart, and a test that paints this panel into an image
- * sees exactly what a window would show.
+ * of the pixels. The display stays the one place the picture lives, so the window and the emulator
+ * cannot drift apart, and a test that paints this panel into an image sees exactly what a window
+ * would show.
  */
 public final class DisplayPanel extends JPanel {
 

@@ -17,16 +17,15 @@ import java.nio.file.Path;
  * <p>{@code --version} on its own prints the name and version and exits.
  *
  * <p>With a step count, it runs that many steps and prints the screen and registers to the
- * terminal. Without one, it opens the window, which runs the ROM in real time, sixty frames
- * a second, or opens empty when there is no ROM path. Either way the ROM runs on a
- * {@link Machine}, built from it and the preset. A ROM that cannot be loaded is reported in
- * one message, {@code loadFailure}: printed in the terminal, shown in a dialogue by the
- * window.
+ * terminal. Without one, it opens the window, which runs the ROM in real time, sixty frames a
+ * second, or opens empty when there is no ROM path. Either way the ROM runs on a {@link Machine},
+ * built from it and the preset. A ROM that cannot be loaded is reported in one message,
+ * {@code loadFailure}: printed in the terminal, shown in a dialogue by the window.
  *
  * <p>Instances are the machine's clock. They drive a {@link Cpu} in frames: a frame is ten
  * steps and a tick, and with display wait on, a draw ends its frame. Both modes share
- * {@link #runSteps(int)}; the window paces it with {@link #catchUp(long)}, and pauses and
- * steps it.
+ * {@link #runSteps(int)}; the window paces it with {@link #catchUp(long)}, and pauses and steps
+ * it.
  */
 public final class Emulator {
 
@@ -62,13 +61,13 @@ public final class Emulator {
     }
 
     /**
-     * Runs the given number of steps, ticking the timers after every tenth step of this run:
-     * after steps 10, 20, 30 and so on.
+     * Runs the given number of steps, ticking the timers after every tenth step of this run: after
+     * steps 10, 20, 30 and so on.
      *
      * <p>When the quirks have display wait on, the rest of the frame after a step that runs a
-     * {@code DXYN} passes without running instructions: later steps up to the frame's tick
-     * do nothing. The tick itself still happens, on its usual step, and the step after it
-     * runs normally again. The wait never outlives this call.
+     * {@code DXYN} passes without running instructions: later steps up to the frame's tick do
+     * nothing. The tick itself still happens, on its usual step, and the step after it runs
+     * normally again. The wait never outlives this call.
      *
      * @param steps the number of steps to run
      */
@@ -89,8 +88,8 @@ public final class Emulator {
     }
 
     /**
-     * Returns how many whole frames fit in the given elapsed time at 60 frames a second,
-     * rounding down.
+     * Returns how many whole frames fit in the given elapsed time at 60 frames a second, rounding
+     * down.
      *
      * @param elapsedNanos nanoseconds since the loop started
      * @return the number of whole frames due
@@ -103,8 +102,7 @@ public final class Emulator {
      * Runs the frames that are due and have not run yet, at most five.
      *
      * <p>Frames beyond the limit are skipped rather than saved: they count as done and never
-     * run. {@code elapsedNanos} counts from the loop's start and never goes down between
-     * calls.
+     * run. {@code elapsedNanos} counts from the loop's start and never goes down between calls.
      *
      * <p>While paused, no frames run: the frames due count as done and {@code 0} is
      * returned, so resuming never runs a burst of saved-up frames.
@@ -130,9 +128,8 @@ public final class Emulator {
     }
 
     /**
-     * Returns whether the tone should be sounding: true while the CPU's sound timer is
-     * above zero. Always {@code false} while paused, so a frozen sound timer does not
-     * drone through a pause.
+     * Returns whether the tone should be sounding: true while the CPU's sound timer is above zero.
+     * Always {@code false} while paused, so a frozen sound timer does not drone through a pause.
      *
      * @return {@code true} if the sound timer is above zero and the emulator is running
      */
@@ -150,8 +147,8 @@ public final class Emulator {
     }
 
     /**
-     * Pauses or resumes the emulator. While paused, {@link #catchUp(long)} runs no frames
-     * (the frames due count as done) and {@link #isSounding()} is {@code false}.
+     * Pauses or resumes the emulator. While paused, {@link #catchUp(long)} runs no frames (the
+     * frames due count as done) and {@link #isSounding()} is {@code false}.
      *
      * @param paused {@code true} to pause, {@code false} to resume
      */
@@ -160,10 +157,9 @@ public final class Emulator {
     }
 
     /**
-     * Runs exactly one instruction through the CPU and returns the opcode it ran. The
-     * timers never move: this is {@link Cpu#step()}, not {@link #runSteps(int)}, so there
-     * is no tick and no display wait. It does not check the pause itself; the window only
-     * calls it while paused.
+     * Runs exactly one instruction through the CPU and returns the opcode it ran. The timers never
+     * move: this is {@link Cpu#step()}, not {@link #runSteps(int)}, so there is no tick and no
+     * display wait. It does not check the pause itself; the window only calls it while paused.
      *
      * @return the opcode the CPU executed
      */
@@ -172,11 +168,11 @@ public final class Emulator {
     }
 
     /**
-     * Returns the program's name and version. When running from the jar, the version
-     * comes from the manifest's {@code Implementation-Version}, which the jar plugin
-     * fills in from the POM, so nothing here hard-codes it. When running from plain
-     * class files, as every test and every {@code exec:java} run does, there is no
-     * manifest, and this returns {@code Achroite (development build)}.
+     * Returns the program's name and version. When running from the jar, the version comes from the
+     * manifest's {@code Implementation-Version}, which the jar plugin fills in from the POM, so
+     * nothing here hard-codes it. When running from plain class files, as every test and every
+     * {@code exec:java} run does, there is no manifest, and this returns
+     * {@code Achroite (development build)}.
      *
      * @return the name and version
      */
@@ -189,15 +185,16 @@ public final class Emulator {
     }
 
     /**
-     * Returns the one-line message for a ROM that {@link Machine#load(Path, Quirks)} could
-     * not load: the terminal prints it, and the window shows it in a dialogue.
+     * Returns the one-line message for a ROM that {@link Machine#load(Path, Quirks)} could not
+     * load: the terminal prints it, and the window shows it in a dialogue. A missing file gives
+     * {@code ROM not found: <rom>}, another read failure gives
+     * {@code Could not read ROM '<rom>': <reason>}, and a ROM that does not fit gives
+     * {@code Could not load ROM '<rom>': <reason>}.
      *
      * @param rom the ROM file that failed
-     * @param e   what {@code load} threw: an {@link IOException} if the file could not be
-     *            read, or an {@link IllegalArgumentException} if it was too large
-     * @return {@code ROM not found: <rom>} for a missing file,
-     *         {@code Could not read ROM '<rom>': <reason>} for another read failure, and
-     *         {@code Could not load ROM '<rom>': <reason>} for a ROM that does not fit
+     * @param e   what {@code load} threw: an {@link IOException} if the file could not be read, or
+     *            an {@link IllegalArgumentException} if it was too large
+     * @return the message
      */
     static String loadFailure(Path rom, Exception e) {
         return switch (e) {

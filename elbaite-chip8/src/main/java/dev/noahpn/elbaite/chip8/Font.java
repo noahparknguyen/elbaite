@@ -4,13 +4,13 @@ package dev.noahpn.elbaite.chip8;
  * The CHIP-8 built-in font: sixteen glyphs, one per hex digit, five bytes each.
  *
  * <p>A glyph is a sprite, a small picture stored one byte per row and one bit per pixel,
- * most significant bit leftmost. Glyphs are four pixels wide, so only the top four bits
- * of each byte carry a pixel and the low four are always zero.
+ * most significant bit leftmost. Glyphs are four pixels wide, so only the top four bits of each
+ * byte carry a pixel and the low four are always zero.
  *
  * <p>This is deliberately not the standard CHIP-8 font. Six glyphs are redrawn —
- * {@code 1}, {@code 7}, {@code A}, {@code C}, {@code E} and {@code F} — which is safe
- * because nothing reads a glyph's shape: {@code FX29} returns a glyph's address and
- * {@code DXYN} draws whatever bytes it finds there.
+ * {@code 1}, {@code 7}, {@code A}, {@code C}, {@code E} and {@code F} — which is safe because
+ * nothing reads a glyph's shape: {@code FX29} returns a glyph's address and {@code DXYN} draws
+ * whatever bytes it finds there.
  */
 public final class Font {
 
@@ -43,12 +43,10 @@ public final class Font {
     }
 
     /**
-     * Returns a copy of the built-in glyph data, five bytes per glyph, glyph {@code 0}
-     * first.
+     * Returns a copy of the built-in glyph data, five bytes per glyph, glyph {@code 0} first.
      *
      * <p>Glyph {@code n} occupies indices {@code n * GLYPH_BYTES} through
-     * {@code n * GLYPH_BYTES + GLYPH_BYTES - 1}. Every value is {@code 0} to
-     * {@code 255}.
+     * {@code n * GLYPH_BYTES + GLYPH_BYTES - 1}. Every value is {@code 0} to {@code 255}.
      *
      * <p>Each call returns a fresh copy. Changing the returned array has no effect on
      * {@code Font}, so the caller may modify it freely.
@@ -60,13 +58,13 @@ public final class Font {
     }
 
     /**
-     * Renders one row of a sprite as a string of blocks and spaces, one character per
-     * pixel: a filled block for a set bit, a space for a clear one.
+     * Renders one row of a sprite as a string of blocks and spaces, one character per pixel: a
+     * filled block for a set bit, a space for a clear one.
      *
      * <p>Character {@code 0} of the result is bit 7 of {@code spriteByte}, character
-     * {@code 1} is bit 6, and so on, so the most significant bit is the leftmost pixel.
-     * Bits below {@code width} are discarded, which is how a four-wide glyph reads only
-     * the top nibble of its byte.
+     * {@code 1} is bit 6, and so on, so the most significant bit is the leftmost pixel. Bits below
+     * {@code width} are discarded, which is how a four-wide glyph reads only the top nibble of its
+     * byte.
      *
      * @param spriteByte the row to render, {@code 0} to {@code 255}
      * @param width      how many pixels to render, at most {@code 8}
@@ -86,8 +84,8 @@ public final class Font {
     }
 
     /**
-     * Prints one glyph to standard output: its hex label on a line of its own, then the
-     * glyph's five rows at {@link #GLYPH_WIDTH}.
+     * Prints one glyph to standard output: its hex label on a line of its own, then the glyph's
+     * five rows at {@link #GLYPH_WIDTH}.
      *
      * @param digit the glyph to print, {@code 0} to {@code 15}
      */

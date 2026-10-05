@@ -1,8 +1,7 @@
 package dev.noahpn.elbaite.chip8;
 
 /**
- * One CHIP-8 instruction: sixteen bits, four nibbles, decoded into the groupings the
- * spec names.
+ * One CHIP-8 instruction: sixteen bits, four nibbles, decoded into the groupings the spec names.
  *
  * @param value the raw instruction, {@code 0x0000} to {@code 0xFFFF}
  */

@@ -37,28 +37,27 @@ import java.util.List;
  * and never reads the file again.
  *
  * <p>A Swing timer fires every 16 ms. Each firing runs the frames the real clock says are
- * due, sixty a second, through {@link Emulator#catchUp(long)}, repaints the screen if any
- * ran, sounds the {@link Beeper} while the sound timer is above zero, and refreshes the
- * debug view. The keyboard is mapped onto the keypad by {@link KeyMap}. A key pressed with
- * Ctrl, Alt or Meta is a shortcut, not a keypad key, and every keypad key is let go when
- * the window loses focus, since a key released elsewhere never reaches it.
+ * due, sixty a second, through {@link Emulator#catchUp(long)}, repaints the screen if any ran,
+ * sounds the {@link Beeper} while the sound timer is above zero, and refreshes the debug view. The
+ * keyboard is mapped onto the keypad by {@link KeyMap}. A key pressed with Ctrl, Alt or Meta is a
+ * shortcut, not a keypad key, and every keypad key is let go when the window loses focus, since a
+ * key released elsewhere never reaches it.
  *
  * <p>{@code P} pauses and resumes, and the title ends in {@code (paused)} meanwhile; the
- * registers print to the terminal. While paused, {@code N} runs one instruction, prints the
- * address it ran from and the opcode it ran, then the registers, and repaints the screen.
- * Each of these ends with a blank line, so every press reads as a block of its own. Time
- * stands still while paused: no ticks, no display wait, and no sound.
+ * registers print to the terminal. While paused, {@code N} runs one instruction, prints the address
+ * it ran from and the opcode it ran, then the registers, and repaints the screen. Each of these
+ * ends with a blank line, so every press reads as a block of its own. Time stands still while
+ * paused: no ticks, no display wait, and no sound.
  *
  * <p>Nothing here needs a terminal. A ROM that cannot be loaded, or that stops with an
- * error while it runs, says so in a dialogue. A stopped ROM stays on screen with its
- * registers and memory in the debug view as they were, the title ends in
- * {@code (stopped)}, and another ROM can be opened as usual. While the file chooser is
- * open, a running ROM holds still.
+ * error while it runs, says so in a dialogue. A stopped ROM stays on screen with its registers and
+ * memory in the debug view as they were, the title ends in {@code (stopped)}, and another ROM can
+ * be opened as usual. While the file chooser is open, a running ROM holds still.
  *
- * <p>The window outlives the machines it runs. The screen, the debug view and the clock belong to a
- * machine and are replaced with it; the frame, the menus, the quirks, the keys, the beeper and the
- * timer belong to the window and stay. A machine's clock starts at the first timer firing after it
- * arrives, so it never inherits time that passed before it.
+ * <p>The window outlives the machines it runs. The screen, the debug view and the clock belong to
+ * a machine and are replaced with it; the frame, the menus, the quirks, the keys, the beeper and
+ * the timer belong to the window and stay. A machine's clock starts at the first timer firing after
+ * it arrives, so it never inherits time that passed before it.
  *
  * <p>On Windows the window takes Windows' own look: its menus, and a file chooser like every other
  * program's there. Elsewhere, it keeps Swing's own look, Metal, which is the same on every system.
@@ -178,13 +177,13 @@ public final class EmulatorWindow {
     }
 
     /**
-     * Loads the three Achroite icon sizes from the class's own resource folder, smallest
-     * for the title bar and largest for the taskbar. Returns an empty list if any of them
-     * is missing or unreadable, in which case the window runs without an icon.
+     * Loads the three Achroite icon sizes from the class's own resource folder, smallest for the
+     * title bar and largest for the taskbar. Returns an empty list if any of them is missing or
+     * unreadable, in which case the window runs without an icon.
      *
      * <p>{@code getResource} returns {@code null} for a missing file rather than throwing,
-     * so the null check names the file in the message. {@code ImageIO.read} on a
-     * {@code null} URL fails with a message that does not.
+     * so the null check names the file in the message. {@code ImageIO.read} on a {@code null} URL
+     * fails with a message that does not.
      *
      * @return the three icons, or an empty list if any could not be loaded
      */
@@ -208,8 +207,8 @@ public final class EmulatorWindow {
     }
 
     /**
-     * Returns the window's title: {@code Achroite}, then the ROM's file name after a dash
-     * when one is loaded, then {@code (stopped)} or {@code (paused)}.
+     * Returns the window's title: {@code Achroite}, then the ROM's file name after a dash when one
+     * is loaded, then {@code (stopped)} or {@code (paused)}.
      *
      * @param rom     the ROM running, or {@code null} for none
      * @param paused  whether the ROM is paused
@@ -232,8 +231,8 @@ public final class EmulatorWindow {
     }
 
     /**
-     * Returns the file chooser's filter: CHIP-8 ROMs, by their usual extensions {@code .ch8}
-     * and {@code .c8} in either case. The chooser keeps its "All Files" choice beside it.
+     * Returns the file chooser's filter: CHIP-8 ROMs, by their usual extensions {@code .ch8} and
+     * {@code .c8} in either case. The chooser keeps its "All Files" choice beside it.
      *
      * @return the filter
      */

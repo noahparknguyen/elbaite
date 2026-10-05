@@ -8,18 +8,17 @@ import java.util.Arrays;
  * <p>A new display has every pixel dark.
  *
  * <p>Coordinates run from the top-left corner. {@code x} goes {@code 0} to {@code 63}
- * left to right, {@code y} goes {@code 0} to {@code 31} top to bottom. The pixel at
- * {@code (x, y)} is stored at {@code y * WIDTH + x} in a flat array — row after row,
- * left to right, the way text is laid out on a page.
+ * left to right, {@code y} goes {@code 0} to {@code 31} top to bottom. The pixel at {@code (x, y)}
+ * is stored at {@code y * WIDTH + x} in a flat array — row after row, left to right, the way text
+ * is laid out on a page.
  *
  * <p>Pixels are {@code boolean}, not {@code int}. A pixel has exactly two states and a
- * {@code boolean} has exactly two values, so an invalid pixel cannot be stored.
- * That is why nothing here range-checks a pixel value the way {@link Cpu} checks a
- * register.
+ * {@code boolean} has exactly two values, so an invalid pixel cannot be stored. That is why nothing
+ * here range-checks a pixel value the way {@link Cpu} checks a register.
  *
  * <p>The screen is its own class rather than a region of {@link Memory}. On the original
- * machine it sat inside RAM, but no CHIP-8 program reads it directly — only {@code 00E0}
- * and the draw instruction touch it.
+ * machine it sat inside RAM, but no CHIP-8 program reads it directly — only {@code 00E0} and the
+ * draw instruction touch it.
  */
 public final class Display {
 
@@ -35,8 +34,8 @@ public final class Display {
      * @param x the column, {@code 0} to {@code 63}
      * @param y the row, {@code 0} to {@code 31}
      * @return {@code true} if the pixel is lit, {@code false} if it is dark
-     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63}
-     *                                   or {@code y} is outside {@code 0} to {@code 31}
+     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63} or
+     *                                   {@code y} is outside {@code 0} to {@code 31}
      */
     public boolean getPixel(int x, int y) {
         checkPixel(x, y);
@@ -49,8 +48,8 @@ public final class Display {
      * @param x  the column, {@code 0} to {@code 63}
      * @param y  the row, {@code 0} to {@code 31}
      * @param on {@code true} to light the pixel, {@code false} to darken it
-     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63}
-     *                                   or {@code y} is outside {@code 0} to {@code 31}
+     * @throws IndexOutOfBoundsException if {@code x} is outside {@code 0} to {@code 63} or
+     *                                   {@code y} is outside {@code 0} to {@code 31}
      */
     public void setPixel(int x, int y, boolean on) {
         checkPixel(x, y);
@@ -68,9 +67,9 @@ public final class Display {
      * Inverts one pixel and reports what it was before the flip.
      *
      * <p>A dark pixel becomes lit and this returns {@code false}; a lit pixel becomes
-     * dark and this returns {@code true}. It is the <em>previous</em> state, not the
-     * new one, because that is what {@code DXYN} needs: a pixel that was lit and just
-     * got switched off means two sprites overlapped, which is a collision.
+     * dark and this returns {@code true}. It is the <em>previous</em> state, not the new one,
+     * because that is what {@code DXYN} needs: a pixel that was lit and just got switched off means
+     * two sprites overlapped, which is a collision.
      *
      * @param x the column, {@code 0} to {@code 63}
      * @param y the row, {@code 0} to {@code 31}
@@ -93,13 +92,13 @@ public final class Display {
     }
 
     /**
-     * Returns the whole screen as text: {@link #HEIGHT} lines of {@link #WIDTH}
-     * characters, a filled block for a lit pixel and a space for a dark one. Every
-     * line ends with a line separator, the last included.
+     * Returns the whole screen as text: {@link #HEIGHT} lines of {@link #WIDTH} characters, a
+     * filled block for a lit pixel and a space for a dark one. Every line ends with a line
+     * separator, the last included.
      *
      * <p>The same two characters {@link Font} uses, so the screen and the font viewer
-     * read the same way. A blank background rather than a dotted one reads as a picture,
-     * at the cost of showing where the screen ends.
+     * read the same way. A blank background rather than a dotted one reads as a picture, at the
+     * cost of showing where the screen ends.
      *
      * <p>This returns the text; it does not print it.
      *

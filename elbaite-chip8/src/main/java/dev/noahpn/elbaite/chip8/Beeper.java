@@ -23,8 +23,8 @@ public final class Beeper {
     /**
      * Creates a beeper with its tone loaded, silent until {@link #setOn(boolean)} starts it.
      *
-     * @throws LineUnavailableException if no line can play the tone, including when the
-     *                                  system has no sound device at all
+     * @throws LineUnavailableException if no line can play the tone, including when the system has
+     *                                  no sound device at all
      */
     public Beeper() throws LineUnavailableException {
         AudioFormat format = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
@@ -60,15 +60,14 @@ public final class Beeper {
 
     /**
      * Returns the samples of a square wave. Each period is {@code period / 2} samples at
-     * {@code +amplitude} followed by the rest at {@code -amplitude}, starting high; a
-     * partial period at the end is cut off where {@code length} runs out.
+     * {@code +amplitude} followed by the rest at {@code -amplitude}, starting high; a partial
+     * period at the end is cut off where {@code length} runs out.
      *
      * @param length    number of samples to return
      * @param period    samples per full period, positive
      * @param amplitude high and low level, {@code 0} to {@code 127}
      * @return {@code length} samples, starting high
-     * @throws IllegalArgumentException if {@code amplitude} is outside {@code 0} to
-     *                                  {@code 127}
+     * @throws IllegalArgumentException if {@code amplitude} is outside {@code 0} to {@code 127}
      */
     public static byte[] squareWave(int length, int period, int amplitude) {
         if (amplitude < 0 || amplitude > 127) {

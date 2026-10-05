@@ -11,7 +11,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 # Read the code, nothing more, except where the job below needs more.
