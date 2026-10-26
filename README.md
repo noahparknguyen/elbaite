@@ -118,7 +118,7 @@ Releases are immutable: once published, their files can't be changed or replaced
 
 ## Build
 
-Java 25 is all it takes. The Maven Wrapper downloads Maven 3.9.16 the first time, and checks it against its checksum.
+Java 25 is all it takes. The Maven Wrapper downloads Maven 3.10.0 the first time, and checks it against its checksum.
 From the root of the repo:
 
 ```
