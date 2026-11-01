@@ -43,7 +43,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.6.0</version>
+          <version>3.6.1</version>
           <configuration>
             <!-- Tests paint Swing components into images and never open a window, so they
                  must not need a display: with DISPLAY set and no X server, AWT throws. -->
